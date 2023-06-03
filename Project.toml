@@ -1,5 +1,5 @@
 name = "FeAmGen"
-uuid = "b9b7ff68695ff0047540b252abaa187f165b6fe0"
+uuid = "09acbd30-6a93-4470-b10f-afabe20e3192"
 authors = ["zhaoli-IHEP <zhaoli@ihep.ac.cn>", "Quan-feng WU <wuquanfeng@ihep.ac.cn>"]
 version = "1.0.0"
 
