@@ -302,20 +302,6 @@ function canonicalize_amp(
   new_amp_lorentz_list = map( amp->subs(amp,canon_map), amp_lorentz_list )
 
   new_mom_list = map( first∘get_args, new_loop_den_list )
-  # k_coeff_mat = coefficient_matrix( new_mom_list, k_list )
-  # for col ∈ eachcol(k_coeff_mat)
-  #   rr_list = findall( !iszero, col )
-  #   rr_index = findfirst( rndex->(!iszero∘SymEngine.coeff)(new_mom_list[rndex],first(q_list)), 
-  #                           rr_list )
-  #   isnothing(rr_index) && continue
-
-  #   rr = rr_list[rr_index]
-  #   col[rr] > 0 && break
-
-  #   flip_rule = Dict{Basic,Basic}( k_list .=> map( -, k_list ) )
-  #   new_loop_den_list = map( den->(expand∘subs)(den,flip_rule), new_loop_den_list )
-  #   new_mom_list = map( mom->(expand∘subs)(mom,flip_rule), new_mom_list )
-  # end # for col
 
   # CHECK begin
   # qi_list = Basic[ Basic("q$ii") for ii in 1:n_loop ]
