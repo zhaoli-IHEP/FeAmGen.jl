@@ -230,6 +230,7 @@ function gen_loop_mom_canon_map(
   end # for selected_mom_indices
 
   return chosen_repl_rule
+
 end # function gen_loop_mom_canon_map
 
 
