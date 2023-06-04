@@ -221,7 +221,7 @@ function gen_loop_mom_canon_map(
           chosen_repl_rule = this_repl_rule
           # @show chosen_repl_order
         elseif tmp_repl_order == chosen_repl_order
-          #@warn "Two equivalent replacement rules are found."
+          ###@warn "Two equivalent replacement rules are found."
           # _, index = findmin( string, [tmp_repl_order, chosen_repl_order] )
           # index == 1 && (chosen_repl_rule = this_repl_rule)
         end # if
