@@ -29,3 +29,6 @@ rm -rf Wplus_t_TO_Wplus_t_?Loop*
 
 rm seed_ggttbar_proc_2Loop_with_1CT.yaml
 
+rm seed_top_self_proc_4Loop.yaml
+rm -rf t_TO_t_4Loop*
+
