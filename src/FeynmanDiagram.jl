@@ -1719,7 +1719,7 @@ function generate_amplitude(
 
   #-----------------------------------
   null_graph_index_list = Vector{Int64}()
-  loop_den_mom_list_collect = Vector{Basic}[]
+  # loop_den_mom_list_collect = Vector{Basic}[]
   for graph_index in 1:length(graph_list)
     g = graph_list[graph_index]
     n_inc = g.property[:n_inc]
@@ -1805,11 +1805,12 @@ function generate_amplitude(
 
     #-----------------------------------------------------------------
     # Make sure the vacuum bubble integrals will be in standard form.
-    loop_den_list, lorentz_list = canonicalize_amp( loop_den_list, lorentz_list, loop_den_mom_list_collect )
-    tmp_loop_den_mom_list = map( first∘get_args, loop_den_list )
-    any( mom_list->tmp_loop_den_mom_list⊆mom_list||mom_list⊆tmp_loop_den_mom_list, 
-          loop_den_mom_list_collect ) ||
-      push!( loop_den_mom_list_collect, tmp_loop_den_mom_list )
+    loop_den_list, lorentz_list = canonicalize_amp( loop_den_list, lorentz_list )
+    # loop_den_list, lorentz_list = canonicalize_amp( loop_den_list, lorentz_list, loop_den_mom_list_collect )
+    # tmp_loop_den_mom_list = map( first∘get_args, loop_den_list )
+    # any( mom_list->tmp_loop_den_mom_list⊆mom_list||mom_list⊆tmp_loop_den_mom_list, 
+    #       loop_den_mom_list_collect ) ||
+    #   push!( loop_den_mom_list_collect, tmp_loop_den_mom_list )
     #-----------------------------------------------------------------
 
     min_ep_xpt = input["Amp_Min_Ep_Xpt"]
