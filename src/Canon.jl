@@ -160,7 +160,7 @@ function gen_loop_mom_canon_map(
   # find all branches of the loop momenta.
   mom_q_coeff_mat = coefficient_matrix( mom_list, q_list )
   @assert (isempty∘setdiff)( unique(mom_q_coeff_mat), Basic[-1,0,1] )
-  mom_q_coeff_list = filter( !iszero, eachrow( mom_q_coeff_mat ) )
+  mom_q_coeff_list = filter( !iszero, (collect∘eachrow)( mom_q_coeff_mat ) )
   mom_q_coeff_list = map( coeff_list->coeff_list./coeff_list[findfirst(!iszero,coeff_list)],
                             mom_q_coeff_list )
   unique!( mom_q_coeff_list )
