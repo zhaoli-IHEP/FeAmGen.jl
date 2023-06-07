@@ -140,7 +140,7 @@ end # function normalize_loop_mom
 # Feb. 16 2023
 function gen_loop_mom_canon_map(
     mom_list::Vector{Basic},
-    loop_den_mom_list_collect::Vector{Vector{Basic}}=Vector{Basic}[]
+    mom_list_collect::Vector{Vector{Basic}}=Vector{Basic}[]
 )::Dict{Basic,Basic}
 #########################################################
 
@@ -215,7 +215,7 @@ function gen_loop_mom_canon_map(
 
       # check cover
       this_cover_flag = false
-      if any( mom_list->this_mom_list⊆mom_list||mom_list⊆this_mom_list, loop_den_mom_list_collect )
+      if any( mom_list->this_mom_list⊆mom_list||mom_list⊆this_mom_list, mom_list_collect )
         has_cover_flag = true
         this_cover_flag = true
       elseif has_cover_flag
@@ -283,8 +283,8 @@ end # function get_sort_order
 #####################################################
 function canonicalize_amp( 
     loop_den_list::Vector{Basic},  
-    amp_lorentz_list::Vector{Basic},
-    loop_den_mom_list_collect::Vector{Vector{Basic}}=Vector{Basic}[]
+    amp_lorentz_list::Vector{Basic}
+    # mom_list_collect::Vector{Vector{Basic}}=Vector{Basic}[]
 )::Tuple{Vector{Basic},Vector{Basic}}
 ######################################################
 
@@ -296,7 +296,8 @@ function canonicalize_amp(
   n_loop == 0 && return loop_den_list, amp_lorentz_list 
 
   mom_list = map( first∘get_args, loop_den_list )
-  canon_map = gen_loop_mom_canon_map( mom_list, loop_den_mom_list_collect )
+  canon_map = gen_loop_mom_canon_map( mom_list )
+  # canon_map = gen_loop_mom_canon_map( mom_list, mom_list_collect )
 
   new_loop_den_list = map( den->subs(den,canon_map), loop_den_list )
   new_loop_den_list = normalize_loop_mom( new_loop_den_list )
