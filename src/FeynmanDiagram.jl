@@ -1747,50 +1747,24 @@ function generate_amplitude(
 
     lorentz_list_pre = lorentz_list_pre[nonzero_pos_list]
 
+    #-----------------------------------------------------------------
+    # Implement the symmetry_map
     if !isempty(symmetry_map) 
       lorentz_list_pre = map( x->subs(x,symmetry_map), lorentz_list_pre )
+      loop_den_list = map( x->subs(x,symmetry_map), loop_den_list )
+      unindep_mom_list = (free_symbols∘collect∘keys)(symmetry_map)
+      for (key,value) in kin_relation
+        if (!isempty∘intersect)( unindep_mom_list, free_symbols(key) )
+          delete!( kin_relation, key )
+        end # if
+      end # for (key,value)
     end # if
 
+    #-----------------------------------------------------------------
     lorentz_list = contract_Dirac_indices_noexpand( g, graph_index, lorentz_list_pre )
 
     # union the same color factors or same lorentz amplitudes.
     lorentz_list, color_list = union_color_lorentz( lorentz_list, color_list )
-
-  ###--------------------
-  ##union_lorentz_list = union( lorentz_list )
-  ##union_color_list = zeros( Basic, length(union_lorentz_list) ) 
-  ##for lorentz_index in 1:length(union_lorentz_list)
-  ##  union_lorentz = union_lorentz_list[lorentz_index]
-  ##  pos_list = findall( ==(union_lorentz), lorentz_list )
-  ##  union_color_list[lorentz_index] = (expand∘sum)( color_list[pos_list] )
-  ##end # for lorentz_index
-
-  ###--------------------
-  ##for lorentz_index in 1:length(union_lorentz_list)
-  ##  union_lorentz = union_lorentz_list[lorentz_index]
-  ##  coeff_list, remnant_list = (split_coeff∘get_add_vector_expand)(union_lorentz)
-  ##  
-  ##  min_str, min_pos = findmin( gen_sorted_str.(remnant_list) )
-  ##  leading_coeff = coeff_list[min_pos]
-
-  ##  union_lorentz_list[lorentz_index] = expand( union_lorentz//leading_coeff )
-  ##  union_color_list[lorentz_index] = expand( union_color_list[lorentz_index]*leading_coeff )
-  ##end # for lorentz_index
-
-  ###--------------------
-  ##union2_lorentz_list = union( union_lorentz_list )
-  ##union2_color_list = zeros( Basic, length(union2_lorentz_list) ) 
-  ##for lorentz_index in 1:length(union2_lorentz_list)
-  ##  union2_lorentz = union2_lorentz_list[lorentz_index]
-  ##  pos_list = findall( ==(union2_lorentz), union_lorentz_list )
-  ##  union2_color_list[lorentz_index] = (expand∘sum)( union_color_list[pos_list] )
-  ##end # for lorentz_index
-
-  ###--------------------
-  ### non-zero color factors and re-alias
-  ##nonzero_pos_list = findall( !iszero, union2_color_list )
-  ##lorentz_list = union2_lorentz_list[nonzero_pos_list]
-  ##color_list = union2_color_list[nonzero_pos_list]
 
     #-------------------------------------------
     # re-ordering
@@ -1803,14 +1777,10 @@ function generate_amplitude(
       continue
     end # if
 
+    
     #-----------------------------------------------------------------
     # Make sure the vacuum bubble integrals will be in standard form.
     loop_den_list, lorentz_list = canonicalize_amp( loop_den_list, lorentz_list )
-    # loop_den_list, lorentz_list = canonicalize_amp( loop_den_list, lorentz_list, mom_list_collect )
-    # tmp_loop_den_mom_list = map( first∘get_args, loop_den_list )
-    # any( mom_list->tmp_loop_den_mom_list⊆mom_list||mom_list⊆tmp_loop_den_mom_list, 
-    #       mom_list_collect ) ||
-    #   push!( mom_list_collect, tmp_loop_den_mom_list )
     #-----------------------------------------------------------------
 
     min_ep_xpt = input["Amp_Min_Ep_Xpt"]
