@@ -13,6 +13,7 @@ using Combinatorics
 using Dates
 using FORM_jll
 using JLD2
+using nauty_jll
 using OrderedCollections
 using Pipe
 using Pkg
@@ -21,10 +22,14 @@ using SHA
 using SymEngine
 using YAML
 
+# Main APIs
+export construct_den_topology
 export digest_seed_proc
 export generate_amp 
+
+# Extra important functionals
 export canonicalize_amp
-export construct_den_topology
+export is_planar
 
 include("Universe.jl")
 include("Graph.jl")
