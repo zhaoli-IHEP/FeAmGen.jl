@@ -447,14 +447,14 @@ function construct_den_topology(
     for shifted_amp_file ∈ shifted_amp_file_list[ pos_list ]
       @assert isfile( shifted_amp_file )
       shifted_jld = load( shifted_amp_file )
-      if haskey( shifted_jld, "included_by_topologies" )
-        included_by_topologies = shifted_jld["included_by_topologies"]
-        included_by_topologies[index] = to_String( complete_dentop.den_list )
-        shifted_jld["included_by_topologies"] = included_by_topologies
+      if haskey( shifted_jld, "topology_dict" )
+        topology_dict = shifted_jld["topology_dict"]
+        topology_dict[index] = to_String( complete_dentop.den_list )
+        shifted_jld["topology_dict"] = topology_dict
         save( shifted_amp_file, shifted_jld )
       else
         jldopen( shifted_amp_file, "a" ) do shifted_jld
-          shifted_jld["included_by_topologies"] = Dict( index => to_String( complete_dentop.den_list ) )
+          shifted_jld["topology_dict"] = Dict( index => to_String( complete_dentop.den_list ) )
         end # shifted_jld
       end # if
 
