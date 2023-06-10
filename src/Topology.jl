@@ -381,7 +381,7 @@ function construct_den_topology(
 
   dentop_collect = DenTop[]
   mom_list_collect = Vector{Basic}[]
-  canon_map_collect = Dict{Basic,Basic}[]
+  mom_shift_collect = Dict{Basic,Basic}[]
   for (amp_index, amp_file, shifted_amp_file) ∈ zip( amp_file_indices, amp_file_list, shifted_amp_file_list )
     @info "Finding momenta shift for $amp_index/$(last(amp_file_indices))..."
     jld_file = jldopen( amp_file, "r" )
@@ -390,9 +390,9 @@ function construct_den_topology(
     amp_list = to_Basic( jld_file["amp_lorentz_list"] )
     mom_list = map( first∘get_args, den_list )
 
-    canon_map = gen_loop_mom_canon_map( mom_list, mom_list_collect )
-    map!( den->subs(den,canon_map), den_list, den_list )
-    map!( amp->subs(amp,canon_map), amp_list, amp_list )
+    mom_shift = gen_loop_mom_canon_map( mom_list, mom_list_collect )
+    map!( den->subs(den,mom_shift), den_list, den_list )
+    map!( amp->subs(amp,mom_shift), amp_list, amp_list )
     den_list = normalize_loop_mom( den_list )
     mom_list = map( first∘get_args, den_list )
 
@@ -405,7 +405,7 @@ function construct_den_topology(
     end # if
 
     push!( dentop_collect, DenTop( n_loop, ind_ext_mom, den_list) )
-    push!( canon_map_collect, canon_map )
+    push!( mom_shift_collect, mom_shift )
 
     jldopen( shifted_amp_file, "w" ) do shifted_jld_file
       for key ∈ filter( key->key∉("amp_lorentz_list","loop_den_list"), keys(jld_file) )
@@ -444,21 +444,39 @@ function construct_den_topology(
     println( line_str )
     map( println, complete_dentop.den_list )
 
+    for shifted_amp_file ∈ shifted_amp_file_list[ pos_list ]
+      @assert isfile( shifted_amp_file )
+      shifted_jld = load( shifted_amp_file )
+      if haskey( shifted_jld, "included_by_topologies" )
+        included_by_topologies = shifted_jld["included_by_topologies"]
+        included_by_topologies[index] = to_String( complete_dentop.den_list )
+        shifted_jld["included_by_topologies"] = included_by_topologies
+        save( shifted_amp_file, shifted_jld )
+      else
+        jldopen( shifted_amp_file, "a" ) do shifted_jld
+          shifted_jld["included_by_topologies"] = Dict( index => to_String( complete_dentop.den_list ) )
+        end # shifted_jld
+      end # if
+
+    end # for shifted_amp_file
+
     jldopen( joinpath( topology_dir, "topology$(index).jld2" ), "w" ) do topology_file
       topology_file["n_loop"] = complete_dentop.n_loop
-      topology_file["ind_ext_mom"] = to_String( complete_dentop.ind_ext_mom )
+      topology_file["indep_ext_mom"] = to_String( complete_dentop.ind_ext_mom )
       topology_file["den_list"] = to_String( complete_dentop.den_list )
-      topology_file["amp_file_list"] = map( file_name->replace(abspath(file_name),root_dir=>".."), amp_file_list[ pos_list ] )
-      topology_file["shifted_amp_file_list"] = map( file_name->replace(file_name,root_dir=>"..") ,shifted_amp_file_list[ pos_list ] )
-      topology_file["canon_map_list"] =
-        map( canon_map -> Dict( string(key) => string( canon_map[key] )
-                                  for key ∈ keys(canon_map) ),
-              canon_map_collect[ pos_list ] )
+
+      topology_file["covering_amplitudes"] = [
+        ( amp_file = replace( abspath( amp_file_name ), root_dir => ".." ),
+          shifted_amp_file = replace( shifted_amp_file_name, root_dir => ".." ),
+          mom_shift = Dict( string(key) => string( mom_shift[key] ) for key ∈ keys(mom_shift) )
+        ) for (amp_file_name, shifted_amp_file_name, mom_shift) ∈
+          zip( amp_file_list[ pos_list ], shifted_amp_file_list[ pos_list ], mom_shift_collect[ pos_list ] )
+      ] # end covering_amplitudes
     end # topology_file
 
     mom_shift_str = join( [ amp_file_list[pos] * "\n  momenta shift:\n" *
                               join( [ "  ├─ $(key) -> $(value)"
-                                        for (key,value) ∈ canon_map_collect[pos] ], "\n" )
+                                        for (key,value) ∈ mom_shift_collect[pos] ], "\n" )
                               for pos ∈ pos_list ], "\n" )
     write( file, """
     $(line_str)
