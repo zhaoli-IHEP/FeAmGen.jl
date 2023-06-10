@@ -53,7 +53,8 @@ incoming: [ "b", "g" ]          # incoming particles
 outgoing: [ "Wminus", "t" ]               # outgoing particles 
 
 # Symmetry configuration
-symmetry: []
+momentum_symmetry: []
+color_symmetry: []
 
 
 """

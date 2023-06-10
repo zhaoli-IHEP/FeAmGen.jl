@@ -53,7 +53,9 @@ incoming: [ "t" ]          # incoming particles
 outgoing: [ "t" ]          # outgoing particles 
 
 # Symmetry configuration
-symmetry: []
+momentum_symmetry: []
+color_symmetry: 
+  - [ 2, 1 ] # 2 => 1
 
 """
 

@@ -1272,6 +1272,8 @@ end # function simplify_color_factors
         amp_lorentz_noexpand_list::Vector{Basic}, 
         loop_den_list::Vector{Basic}, 
         loop_den_xpt_list::Vector{Int64}, 
+        mom_symmetry::Dict{Basic,Basic}, 
+        color_symmetry::Dict{Int64,Int64}, 
         min_ep_xpt::Int64, 
         max_ep_xpt::Int64, 
         proc_str::String )::Nothing
@@ -1292,7 +1294,8 @@ function write_out_amplitude(
     amp_lorentz_noexpand_list::Vector{Basic}, 
     loop_den_list::Vector{Basic}, 
     loop_den_xpt_list::Vector{Int64},
-    symmetry_map::Dict{Basic,Basic}, 
+    mom_symmetry::Dict{Basic,Basic}, 
+    color_symmetry::Dict{Int64,Int64}, 
     min_ep_xpt::Int64, 
     max_ep_xpt::Int64, 
     proc_str::String
@@ -1323,8 +1326,15 @@ function write_out_amplitude(
   end # for one_pair
 
   write( amp_file, 
-    "Symmetry Configuration: \n" )
-  for one_pair in collect(symmetry_map)
+    "Momentum Symmetry Configuration: \n" )
+  for one_pair in collect(mom_symmetry)
+    write( amp_file, 
+    "  $(one_pair)\n" )
+  end # for one_pair
+
+  write( amp_file, 
+    "Color Symmetry Configuration: \n" )
+  for one_pair in collect(color_symmetry)
     write( amp_file, 
     "  $(one_pair)\n" )
   end # for one_pair
@@ -1381,7 +1391,8 @@ function write_out_amplitude(
     write( file, "loop_den_xpt_list", loop_den_xpt_list )
     write( file, "kin_relation", to_String_dict(kin_relation) )
     write( file, "baseINC_script_str", baseINC_script_str )
-    write( file, "symmetry_map", to_String_dict(symmetry_map) ) 
+    write( file, "mom_symmetry", to_String_dict(mom_symmetry) ) 
+    write( file, "color_symmetry", color_symmetry ) 
     write( file, "model_parameter_dict", to_String_dict(parameter_dict) ) 
     write( file, "amp_color_list",  string.(amp_color_list) )
     write( file, "amp_lorentz_list",  amp_lorentz_str_list )
@@ -1415,7 +1426,8 @@ end # function write_out_amplitude
         loop_den_xpt_list::Vector{Int64}, 
         ext_mom_list::Vector{Basic}, 
         scale2_list::Vector{Basic}, 
-        symmetry_map::Dict{Basic,Basic}, 
+        mom_symmetry::Dict{Basic,Basic}, 
+        color_symmetry::Dict{Int64,Int64}, 
         proc_str::String 
     )::Nothing
 
@@ -1432,7 +1444,8 @@ function write_out_visual_graph(
     loop_den_xpt_list::Vector{Int64}, 
     ext_mom_list::Vector{Basic}, 
     scale2_list::Vector{Basic}, 
-    symmetry_map::Dict{Basic,Basic}, 
+    mom_symmetry::Dict{Basic,Basic}, 
+    color_symmetry::Dict{Int64,Int64}, 
     proc_str::String 
 )::Nothing
 #########################################################################
@@ -1473,8 +1486,10 @@ function write_out_visual_graph(
   write( expression_file, """
   (* coupling factor: *) 
   $(couplingfactor)
-  (* Symmetry Configuration: *) 
-  $(symmetry_map)
+  (* Momentum Symmetry Configuration: *) 
+  $(mom_symmetry)
+  (* Color Symmetry Configuration: *) 
+  $(color_symmetry)
   """ )
 
   n_color = length(color_list)
@@ -1713,8 +1728,10 @@ function generate_amplitude(
   # baseINC only needs information from the external fields.
   baseINC_script_str = make_baseINC_script( first(graph_list) )
 
-  symmetry_map = to_Basic_dict( convert( Vector{Vector{String}}, input["symmetry"] ) )
-  @show symmetry_map
+  mom_symmetry = to_Basic_dict( convert( Vector{Vector{String}}, input["momentum_symmetry"] ) )
+  @show mom_symmetry
+  color_symmetry = Dict{Int64,Int64}( input["color_symmetry"] )
+  @show color_symmetry
 
 
   #-----------------------------------
@@ -1723,13 +1740,58 @@ function generate_amplitude(
   for graph_index in 1:length(graph_list)
     g = graph_list[graph_index]
     n_inc = g.property[:n_inc]
+    n_out = g.property[:n_out]
     box_message( "Working on diagram #$(graph_index) ($(length(graph_list)))", color=:light_green )
 
     scale2_list = generate_scale2_list( g, kin_relation )
 
     color_list, lorentz_list = assemble_amplitude( g )
 
-    color_list = simplify_color_factors( g, graph_index, color_list )
+    #---------------------------------
+    # Implement color symmetry
+    color_symmetry_factor = one(Basic)
+    if !isempty(color_symmetry)
+      external_edge_list = filter( is_external, g.edge_list )
+
+      @funs DeltaFun DeltaAdj
+      for (key,val) in color_symmetry 
+        @assert key <= n_inc+n_out
+        key_pos = findfirst( x->x.property[:mark] == key, external_edge_list )
+        key_edge = external_edge_list[key_pos]
+        key_color = zero(Basic)
+        if key <= n_inc # incoming
+          key_color = key_edge.property[:death_COLOR]
+        else # outgoing
+          key_color = key_edge.property[:birth_COLOR]
+        end # if
+        key_color_freedom = key_edge.property[:particle].color
+        @assert key_color_freedom != :singlet
+
+        @assert val <= n_inc+n_out
+        val_pos = findfirst( x->x.property[:mark] == val, external_edge_list )
+        val_edge = external_edge_list[val_pos]
+        val_color = zero(Basic)
+        if val <= n_inc # incoming
+          val_color = val_edge.property[:death_COLOR]
+        else # outgoing
+          val_color = val_edge.property[:birth_COLOR]
+        end # if
+        val_color_freedom = val_edge.property[:particle].color
+        @assert val_color_freedom != :singlet
+
+        @assert key_color_freedom == val_color_freedom
+        if key_color_freedom == :triplet
+          color_symmetry_factor *= DeltaFun(key_color,val_color)
+        elseif key_color_freedom == :octet
+          color_symmetry_factor *= DeltaAdj(key_color,val_color)
+        else
+          Panic("HERE")
+        end # if
+     
+      end # for (key,value)
+    end # if
+
+    color_list = simplify_color_factors( g, graph_index, color_symmetry_factor.*color_list )
 
     # Sometimes evaluation to Nc can also lead to zero.
     @vars ca cf nc
@@ -1748,17 +1810,21 @@ function generate_amplitude(
     lorentz_list_pre = lorentz_list_pre[nonzero_pos_list]
 
     #-----------------------------------------------------------------
-    # Implement the symmetry_map
-    if !isempty(symmetry_map) 
-      lorentz_list_pre = map( x->subs(x,symmetry_map), lorentz_list_pre )
-      loop_den_list = map( x->subs(x,symmetry_map), loop_den_list )
-      unindep_mom_list = (free_symbols∘collect∘keys)(symmetry_map)
+    # Implement the mom_symmetry
+    if !isempty(mom_symmetry) 
+      lorentz_list_pre = map( x->subs(x,mom_symmetry), lorentz_list_pre )
+      loop_den_list = map( x->subs(x,mom_symmetry), loop_den_list )
+      unindep_mom_list = (free_symbols∘collect∘keys)(mom_symmetry)
       for (key,value) in kin_relation
         if (!isempty∘intersect)( unindep_mom_list, free_symbols(key) )
           delete!( kin_relation, key )
         end # if
       end # for (key,value)
     end # if
+
+
+
+
 
     #-----------------------------------------------------------------
     lorentz_list = contract_Dirac_indices_noexpand( g, graph_index, lorentz_list_pre )
@@ -1788,11 +1854,11 @@ function generate_amplitude(
     write_out_amplitude( n_inc, n_loop, graph_index, couplingfactor, model.parameter_dict, 
         ext_mom_list, scale2_list, kin_relation, baseINC_script_str, 
         color_list, lorentz_list, loop_den_list, loop_den_xpt_list, 
-        symmetry_map, min_ep_xpt, max_ep_xpt, proc_str )
+        mom_symmetry, color_symmetry, min_ep_xpt, max_ep_xpt, proc_str )
 
     write_out_visual_graph( g, graph_index, model, couplingfactor, 
         color_list, lorentz_list, loop_den_list, loop_den_xpt_list, 
-        ext_mom_list, scale2_list, symmetry_map, proc_str )
+        ext_mom_list, scale2_list, mom_symmetry, color_symmetry, proc_str )
 
   end # for graph_index
 
