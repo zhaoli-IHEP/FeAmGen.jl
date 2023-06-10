@@ -473,7 +473,8 @@ function write_card( proc_str::String, n_inc::Int64, input::Dict{Any,Any} )::Str
   couplingfactor: \"1\"
 
   # Symmetry Configuration
-  symmetry: $(isempty(input["symmetry"]) ? "[]" : input["symmetry"])
+  momentum_symmetry: $(isempty(input["momentum_symmetry"]) ? "[]" : input["momentum_symmetry"])
+  color_symmetry: $(isempty(input["color_symmetry"]) ? "[]" : input["color_symmetry"])
 
   """ )
   close(file)

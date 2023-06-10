@@ -53,9 +53,11 @@ incoming: [ "Wplus", "t" ]          # incoming particles
 outgoing: [ "Wplus", "t" ]          # outgoing particles 
 
 # Symmetry configuration
-symmetry: 
+momentum_symmetry: 
   - [ K3, K1 ] # K3=>K1
   - [ K4, K2 ] # K4=>K2
+color_symmetry: 
+  - [ 4, 2 ] # 4=>2
 
 """
 
