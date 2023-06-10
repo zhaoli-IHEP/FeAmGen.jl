@@ -159,6 +159,7 @@ end # function get_out_edge_list
 # 2023-06-10
 function is_planar( visual_tex_file::String )::Bool
 ###############################################################
+  @assert endswith( visual_tex_file, ".tex" )
   @assert isfile( visual_tex_file )
   contents = readlines( visual_tex_file )
   filter!( startswith(r"v[1-9]\d*"), contents )
@@ -250,6 +251,9 @@ function is_planar( visual_tex_file::String )::Bool
   run( planarg_cmd )
 
   planar_list = readlines( "planar_result.txt" )
+
+  rm.( ["adj_mat.txt", "amtog.log", "input.g6", "planar_result.txt"]; force=true )
+
   isempty( planar_list ) && return false
   return true
 
