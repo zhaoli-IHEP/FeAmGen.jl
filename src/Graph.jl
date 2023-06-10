@@ -154,3 +154,103 @@ end # function get_out_edge_list
 ###############################################################
 
 
+###############################################################
+# Created by Quan-feng WU
+# 2023-06-10
+function is_planar( visual_tex_file::String )::Bool
+###############################################################
+  @assert isfile( visual_tex_file )
+  contents = readlines( visual_tex_file )
+  filter!( startswith(r"v[1-9]\d*"), contents )
+
+  edges_list = Tuple{Int,Int}[]
+  for one_line ∈ contents
+    v_range_list = findall( r"v[1-9]\d*", one_line )
+    vertex_index_list = [ parse( Int, one_line[v_range][2:end] )
+                            for v_range ∈ v_range_list ]
+    n_vertices = length( vertex_index_list )
+    for ii ∈ 1:n_vertices-1
+      vi = vertex_index_list[ii]
+      vj = vertex_index_list[ii+1]
+      if vi ≤ vj
+        push!( edges_list, (vi, vj) )
+      else
+        push!( edges_list, (vj, vi) )
+      end # if
+    end # for ii
+  end # for one_line
+
+  vertices_list = (sort∘union)( edges_list... )
+  vertices_count = [ sum( e->count(==(vi),e), edges_list )
+                      for vi ∈ vertices_list ]
+  v_inf = maximum( vertices_list ) + 1
+  v_ext_indices = findall( ==(1), vertices_count )
+  for v_ext ∈ vertices_list[v_ext_indices]
+    push!( edges_list, (v_ext, v_inf) )
+  end # for v_ext
+  push!( vertices_list, v_inf )
+
+  n_vertices = length( vertices_list )
+  for (ee, one_edge) ∈ enumerate( edges_list )
+    vi, vj = one_edge
+    vi = findfirst( ==(vi), vertices_list )
+    vj = findfirst( ==(vj), vertices_list )
+    edges_list[ee] = (vi, vj)
+  end # for (ee, one_edge)
+
+  next_vertex = n_vertices + 1
+  to_be_added_edges_list = Tuple{Int,Int}[]
+  self_loop_edge_indices = findall( iijj->first(iijj)==last(iijj), edges_list )
+  for ee ∈ self_loop_edge_indices
+    vi = first( edges_list[ee] )
+    push!( to_be_added_edges_list,
+            (vi, next_vertex),
+            (next_vertex, next_vertex+1),
+            (vi, next_vertex+1) )
+    next_vertex += 2
+    n_vertices += 2
+  end # for ee
+  deleteat!( edges_list, self_loop_edge_indices )
+  edges_list = vcat( edges_list, to_be_added_edges_list )
+
+  unique_edges_list = unique( edges_list )
+  to_be_added_edges_list = Tuple{Int,Int}[]
+  for unique_edge ∈ unique_edges_list
+    vi, vj = unique_edge
+    duplicate_number = count( ==(unique_edge), edges_list )
+    @assert duplicate_number ≥ 1
+    while duplicate_number > 1
+      push!( to_be_added_edges_list, 
+              (vi, next_vertex),
+              (vj, next_vertex) )
+      next_vertex += 1
+      n_vertices += 1
+      duplicate_number -= 1
+    end # while
+  end # for unique_edge
+  edges_list = vcat( unique_edges_list, to_be_added_edges_list )
+
+  adj_mat = zeros( Int, n_vertices, n_vertices )
+  for one_edge ∈ edges_list
+    ii, jj = one_edge
+    adj_mat[ii, jj] += 1
+    adj_mat[jj, ii] += 1
+  end # for one_edge
+  @assert all( ele->iszero(ele)||ele==1, adj_mat )
+  @assert all( iszero, adj_mat[ii, ii] for ii ∈ 1:n_vertices )
+
+  adj_mat_str = "n=$n_vertices\n" * join( [ join(row) for row ∈ eachrow(adj_mat) ], "\n" )
+
+  write( "adj_mat.txt", adj_mat_str )
+
+  amtog_cmd = pipeline( `$(amtog()) adj_mat.txt input.g6`, stdout="amtog.log" )
+  run( amtog_cmd )
+
+  planarg_cmd = pipeline( `$(planarg()) input.g6 planar_result.txt` )
+  run( planarg_cmd )
+
+  planar_list = readlines( "planar_result.txt" )
+  isempty( planar_list ) && return false
+  return true
+
+end # function is_planar
