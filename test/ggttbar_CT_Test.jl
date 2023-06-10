@@ -53,7 +53,8 @@ incoming: [ "parton", "parton" ]          # incoming particles
 outgoing: [ "t", "tbar" ]               # outgoing particles 
 
 # Symmetry configuration
-symmetry: []
+momentum_symmetry: []
+color_symmetry: []
 
 """
 

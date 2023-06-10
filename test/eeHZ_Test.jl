@@ -53,7 +53,8 @@ incoming: [ "eminus", "eplus" ]          # incoming particles
 outgoing: [ "H", "Z" ]               # outgoing particles 
 
 # Symmetry configuration
-symmetry: [] 
+momentum_symmetry: [] 
+color_symmetry: [] 
 
 """
 

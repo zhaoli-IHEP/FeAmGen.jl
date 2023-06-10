@@ -52,7 +52,8 @@ incoming: [ "dbar", "u" ]          # incoming particles
 outgoing: [ "Wplus" ]               # outgoing particles 
 
 # Symmetry configuration
-symmetry: []
+momentum_symmetry: []
+color_symmetry: []
 
 """
 
