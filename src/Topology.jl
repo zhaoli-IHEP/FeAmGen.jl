@@ -343,7 +343,8 @@ end # function make_complete_dentop_collect
 
 ###########################################
 function construct_den_topology(
-    amp_dir::String
+    amp_dir::String;
+    mom_shift_opt::Bool=true
 )::Vector{DenTop}
 ###########################################
 
@@ -351,22 +352,21 @@ function construct_den_topology(
   endswith( amp_dir, '/') && (amp_dir = amp_dir[begin:end-1])
   @assert endswith( amp_dir, "_amplitudes" )
   root_dir, shifted_amp_dir, topology_dir = begin
-    root_dir, amp_name = splitdir(amp_dir)
-    root_dir = isempty(root_dir) ? pwd() : root_dir
+    root_dir, amp_name = (splitdir∘abspath)(amp_dir)
 
     root_dir,
       joinpath( root_dir, replace( amp_name, "_amplitudes" => "_shifted_amplitudes" ) ),
-      joinpath( root_dir, replace( amp_name, "_amplitudes" => "_topology" ) )
+      joinpath( root_dir, replace( amp_name, "_amplitudes" => mom_shift_opt ? "_topology" : "_topology_unshifted" ) )
   end # topology_dir
-  bk_mkdir( shifted_amp_dir )
+  mom_shift_opt && bk_mkdir( shifted_amp_dir )
   bk_mkdir( topology_dir )
 
   amp_file_list = filter( file_name->(!isnothing∘match)(r"^amp[1-9]\d*.jld2$",basename(file_name)), readdir( amp_dir; join=true, sort=false ) )
   amp_file_indices = map( file_name->parse(Int,match(r"[1-9]\d*",basename(file_name)).match), amp_file_list )
   amp_order = sortperm( amp_file_indices )
   amp_file_list = amp_file_list[amp_order]
-  shifted_amp_file_list = map( file_name->joinpath(shifted_amp_dir,replace(basename(file_name),r"^amp"=>"shifted_amp")),
-                                  amp_file_list )
+  shifted_amp_file_list = mom_shift_opt ? map( file_name->joinpath(shifted_amp_dir,replace(basename(file_name),r"^amp"=>"shifted_amp")),
+                                                amp_file_list ) : String[]
   amp_file_indices = amp_file_indices[amp_order]
   @info "Found $(length(amp_file_list)) amplitude files at $amp_dir."
 
@@ -382,41 +382,49 @@ function construct_den_topology(
   dentop_collect = DenTop[]
   mom_list_collect = Vector{Basic}[]
   mom_shift_collect = Dict{Basic,Basic}[]
-  for (amp_index, amp_file, shifted_amp_file) ∈ zip( amp_file_indices, amp_file_list, shifted_amp_file_list )
-    @info "Finding momenta shift for $amp_index/$(last(amp_file_indices))..."
+  for (index, amp_index) ∈ enumerate( amp_file_indices )
+    amp_file = amp_file_list[index]
+    shifted_amp_file = mom_shift_opt ? shifted_amp_file_list[index] : 0
+
     jld_file = jldopen( amp_file, "r" )
 
     den_list = to_Basic( jld_file["loop_den_list"] )
-    amp_list = to_Basic( jld_file["amp_lorentz_list"] )
-    mom_list = map( first∘get_args, den_list )
 
-    mom_shift = gen_loop_mom_canon_map( mom_list, mom_list_collect )
-    map!( den->subs(den,mom_shift), den_list, den_list )
-    map!( amp->subs(amp,mom_shift), amp_list, amp_list )
-    den_list = normalize_loop_mom( den_list )
-    mom_list = map( first∘get_args, den_list )
+    if mom_shift_opt
+      @info "Finding momenta shift for $amp_index/$(last(amp_file_indices))..."
 
-    covering_indices = findall( exist_mom_list->exist_mom_list⊆mom_list, mom_list_collect )
-    if !isempty(covering_indices)
-      deleteat!( mom_list_collect, covering_indices )
-      push!( mom_list_collect, mom_list )
-    elseif !any( exist_mom_list->mom_list⊆exist_mom_list, mom_list_collect )
-      push!( mom_list_collect, mom_list )
+      amp_list = to_Basic( jld_file["amp_lorentz_list"] )
+      mom_list = map( first∘get_args, den_list )
+
+      mom_shift = gen_loop_mom_canon_map( mom_list, mom_list_collect )
+      map!( den->subs(den,mom_shift), den_list, den_list )
+      map!( amp->subs(amp,mom_shift), amp_list, amp_list )
+      den_list = normalize_loop_mom( den_list )
+      mom_list = map( first∘get_args, den_list )
+
+      covering_indices = findall( exist_mom_list->exist_mom_list⊆mom_list, mom_list_collect )
+      if !isempty(covering_indices)
+        deleteat!( mom_list_collect, covering_indices )
+        push!( mom_list_collect, mom_list )
+      elseif !any( exist_mom_list->mom_list⊆exist_mom_list, mom_list_collect )
+        push!( mom_list_collect, mom_list )
+      end # if
+
+      push!( mom_shift_collect, mom_shift )
+
+      jldopen( shifted_amp_file, "w" ) do shifted_jld_file
+        for key ∈ filter( key->key∉("amp_lorentz_list","loop_den_list"), keys(jld_file) )
+          shifted_jld_file[key] = jld_file[key]
+        end # for key
+        shifted_jld_file["amp_lorentz_list"] = to_String( amp_list )
+        shifted_jld_file["loop_den_list"] = to_String( den_list )
+      end # shifted_jld_file
     end # if
 
     push!( dentop_collect, DenTop( n_loop, ind_ext_mom, den_list) )
-    push!( mom_shift_collect, mom_shift )
-
-    jldopen( shifted_amp_file, "w" ) do shifted_jld_file
-      for key ∈ filter( key->key∉("amp_lorentz_list","loop_den_list"), keys(jld_file) )
-        shifted_jld_file[key] = jld_file[key]
-      end # for key
-      shifted_jld_file["amp_lorentz_list"] = to_String( amp_list )
-      shifted_jld_file["loop_den_list"] = to_String( den_list )
-    end # shifted_jld_file
 
     close( jld_file )
-  end # for (amp_index, amp_file)
+  end # for (index, amp_index)
   backup_dentop_collect = copy( dentop_collect )
 
   unique!( dentop->reduce(*,dentop.den_list), dentop_collect )
@@ -429,7 +437,7 @@ function construct_den_topology(
   @assert all( backup_dentop->any(complete_dentop->backup_dentop⊆complete_dentop,complete_dentop_collect), backup_dentop_collect )
   @info "$(length(complete_dentop_collect)) complete topologies found @ $(now())."
 
-  file = open( joinpath( topology_dir, "topology.out" ), "w" )
+  file = open( joinpath( topology_dir, mom_shift_opt ? "topology.out" : "topology_unshifted.out" ), "w" )
   line_str = "-"^80
   remaining_indices = (collect∘eachindex)( backup_dentop_collect )
   for (index, complete_dentop) ∈ enumerate( complete_dentop_collect )
@@ -444,44 +452,49 @@ function construct_den_topology(
     println( line_str )
     map( println, complete_dentop.den_list )
 
-    for shifted_amp_file ∈ shifted_amp_file_list[ pos_list ]
-      @assert isfile( shifted_amp_file )
-      shifted_jld = load( shifted_amp_file )
-      if haskey( shifted_jld, "topology_dict" )
-        topology_dict = shifted_jld["topology_dict"]
-        topology_dict[index] = to_String( complete_dentop.den_list )
-        shifted_jld["topology_dict"] = topology_dict
-        save( shifted_amp_file, shifted_jld )
-      else
-        jldopen( shifted_amp_file, "a" ) do shifted_jld
-          shifted_jld["topology_dict"] = Dict( index => to_String( complete_dentop.den_list ) )
-        end # shifted_jld
-      end # if
+    if mom_shift_opt
+      for shifted_amp_file ∈ shifted_amp_file_list[ pos_list ]
+        @assert isfile( shifted_amp_file )
+        shifted_jld = load( shifted_amp_file )
+        if haskey( shifted_jld, "topology_dict" )
+          topology_dict = shifted_jld["topology_dict"]
+          topology_dict[index] = to_String( complete_dentop.den_list )
+          shifted_jld["topology_dict"] = topology_dict
+          save( shifted_amp_file, shifted_jld )
+        else
+          jldopen( shifted_amp_file, "a" ) do shifted_jld
+            shifted_jld["topology_dict"] = Dict( index => to_String( complete_dentop.den_list ) )
+          end # shifted_jld
+        end # if
 
-    end # for shifted_amp_file
+      end # for shifted_amp_file
+    end # if mom_shift_opt
 
     jldopen( joinpath( topology_dir, "topology$(index).jld2" ), "w" ) do topology_file
       topology_file["n_loop"] = complete_dentop.n_loop
       topology_file["indep_ext_mom"] = to_String( complete_dentop.ind_ext_mom )
       topology_file["den_list"] = to_String( complete_dentop.den_list )
 
-      topology_file["covering_amplitudes"] = [
+      topology_file["covering_amplitudes"] = mom_shift_opt ? [
         ( amp_file = replace( abspath( amp_file_name ), root_dir => ".." ),
           shifted_amp_file = replace( shifted_amp_file_name, root_dir => ".." ),
           mom_shift = Dict( string(key) => string( mom_shift[key] ) for key ∈ keys(mom_shift) )
         ) for (amp_file_name, shifted_amp_file_name, mom_shift) ∈
           zip( amp_file_list[ pos_list ], shifted_amp_file_list[ pos_list ], mom_shift_collect[ pos_list ] )
-      ] # end covering_amplitudes
+      ] : [ replace( abspath( amp_file_name ), root_dir => ".." )
+              for amp_file_name ∈ amp_file_list[ pos_list ] ]
     end # topology_file
 
-    mom_shift_str = join( [ amp_file_list[pos] * "\n  momenta shift:\n" *
-                              join( [ "  ├─ $(key) -> $(value)"
-                                        for (key,value) ∈ mom_shift_collect[pos] ], "\n" )
-                              for pos ∈ pos_list ], "\n" )
+    cover_amp_str = mom_shift_opt ? 
+                      join( [ amp_file_list[pos] * "\n  momenta shift:\n" *
+                                join( [ "  ├─ $(key) -> $(value)"
+                                          for (key,value) ∈ mom_shift_collect[pos] ], "\n" )
+                                for pos ∈ pos_list ], "\n" ) :
+                      join( amp_file_list[pos_list], "\n" )
     write( file, """
     $(line_str)
     Complete topology #$(index) covers files:
-    $(mom_shift_str)
+    $(cover_amp_str)
     $(line_str)
     $(join( map(string,complete_dentop.den_list), "\n" ))
 
