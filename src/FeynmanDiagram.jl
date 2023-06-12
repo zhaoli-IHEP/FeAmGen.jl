@@ -1795,7 +1795,7 @@ function generate_amplitude(
 
     # Sometimes evaluation to Nc can also lead to zero.
     @vars ca cf nc
-    color_map = Dict([ ca=>nc, cf=>(nc^2-1)/nc ])
+    color_map = Dict([ ca=>nc, cf=>(nc^2-1)/(2*nc) ])
     nonzero_pos_list = findall( !iszero, map(x->subs(x,color_map),color_list) )
     color_list = color_list[nonzero_pos_list]
 

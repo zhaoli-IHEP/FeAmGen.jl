@@ -244,10 +244,10 @@ function is_planar( visual_tex_file::String )::Bool
 
   write( "adj_mat.txt", adj_mat_str )
 
-  amtog_cmd = pipeline( `$(amtog()) adj_mat.txt input.g6`, stdout="amtog.log" )
+  amtog_cmd = pipeline( `$(amtog()) adj_mat.txt input.g6`, stdout="amtog.log", stderr="amtog.err" )
   run( amtog_cmd )
 
-  planarg_cmd = pipeline( `$(planarg()) input.g6 planar_result.txt` )
+  planarg_cmd = pipeline( `$(planarg()) input.g6 planar_result.txt`, stdout="planar_result.log", stderr="planar_result.err" )
   run( planarg_cmd )
 
   planar_list = readlines( "planar_result.txt" )
