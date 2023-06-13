@@ -1693,8 +1693,8 @@ function generate_amplitude(
   # Convert qgraf to Graph
   graph_list = @pipe qgraf_list |> 
                map( q -> convert_qgraf_TO_Graph( q, model ), _ ) |>
-               convert( Array{Graph,1}, _ ) |>
                filter( !isnothing, _ ) |>
+               convert( Array{Graph,1}, _ ) |>
                sort( _, by= g->g.property[:diagram_index] )
   #------------------------------------------------  
   graph_list = filter( !is_null_graph, graph_list )
