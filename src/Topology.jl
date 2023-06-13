@@ -356,7 +356,7 @@ function construct_den_topology(
 
     root_dir,
       joinpath( root_dir, replace( amp_name, "_amplitudes" => "_shifted_amplitudes" ) ),
-      joinpath( root_dir, replace( amp_name, "_amplitudes" => mom_shift_opt ? "_topology" : "_topology_unshifted" ) )
+      joinpath( root_dir, replace( amp_name, "_amplitudes" => mom_shift_opt ? "_shifted_topology" : "_topology" ) )
   end # topology_dir
   mom_shift_opt && bk_mkdir( shifted_amp_dir )
   bk_mkdir( topology_dir )
@@ -437,7 +437,7 @@ function construct_den_topology(
   @assert all( backup_dentop->any(complete_dentop->backup_dentop⊆complete_dentop,complete_dentop_collect), backup_dentop_collect )
   @info "$(length(complete_dentop_collect)) complete topologies found @ $(now())."
 
-  file = open( joinpath( topology_dir, mom_shift_opt ? "topology.out" : "topology_unshifted.out" ), "w" )
+  file = open( joinpath( topology_dir, mom_shift_opt ? "shifted_topology.out" : "topology.out" ), "w" )
   line_str = "-"^80
   remaining_indices = (collect∘eachindex)( backup_dentop_collect )
   for (index, complete_dentop) ∈ enumerate( complete_dentop_collect )
