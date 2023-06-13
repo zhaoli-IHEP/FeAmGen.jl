@@ -3,7 +3,7 @@ import Base: isempty, issubset, length, union
 ###########################################
 struct DenTop
   n_loop::Int
-  ind_ext_mom::Vector{Basic}
+  indep_ext_mom::Vector{Basic}
   den_list::Vector{Basic}
   # cover_indices::Vector{Int}
   # mom_shift_collect::Dict{Int,Dict{Basic,Basic}}
@@ -17,7 +17,7 @@ isempty( dentop::DenTop ) = isempty( dentop.den_list )
 
 issubset( dentop1::DenTop, dentop2::DenTop )::Bool =
     dentop1.n_loop == dentop2.n_loop &&
-    dentop1.ind_ext_mom == dentop2.ind_ext_mom &&
+    dentop1.indep_ext_mom == dentop2.indep_ext_mom &&
     issubset( dentop1.den_list, dentop2.den_list )
 
 length( dentop::DenTop )::Int64 = length( dentop.den_list )
@@ -29,7 +29,7 @@ function union(
 )::DenTop
 ###########################################
   @assert dentop1.n_loop == dentop2.n_loop
-  @assert dentop1.ind_ext_mom == dentop2.ind_ext_mom
+  @assert dentop1.indep_ext_mom == dentop2.indep_ext_mom
 
   new_den_list = union( dentop1.den_list, dentop2.den_list )
 
@@ -47,8 +47,8 @@ function union(
   # end # for key
   # @assert keys(new_mom_shift_collect) == union( keys(dentop1.mom_shift_collect), keys(dentop2.mom_shift_collect) )
 
-  return DenTop( dentop1.n_loop, dentop1.ind_ext_mom, new_den_list )
-  # return DenTop( dentop1.n_loop, dentop1.ind_ext_mom, new_den_list, new_mom_shift_collect )
+  return DenTop( dentop1.n_loop, dentop1.indep_ext_mom, new_den_list )
+  # return DenTop( dentop1.n_loop, dentop1.indep_ext_mom, new_den_list, new_mom_shift_collect )
 end # function union
 
 ###########################################
@@ -59,18 +59,18 @@ function union(
 ###########################################
 
   @assert (get_loop_index∘last∘get_loop_momenta)( den_list ) ≤ dentop.n_loop
-  @assert get_ext_momenta( den_list ) ⊆ dentop.ind_ext_mom
+  @assert get_ext_momenta( den_list ) ⊆ dentop.indep_ext_mom
 
-  return DenTop( dentop.n_loop, dentop.ind_ext_mom, union(dentop.den_list,den_list) )
-  # return DenTop( dentop.n_loop, dentop.ind_ext_mom, union(dentop.den_list,den_list), dentop.mom_shift_collect )
+  return DenTop( dentop.n_loop, dentop.indep_ext_mom, union(dentop.den_list,den_list) )
+  # return DenTop( dentop.n_loop, dentop.indep_ext_mom, union(dentop.den_list,den_list), dentop.mom_shift_collect )
 
 end # function union
 
 union( dentop::DenTop, den::Basic ) = union( dentop, [den] )
 
 union( dentop::DenTop )::DenTop =
-  DenTop( dentop.n_loop, dentop.ind_ext_mom, union(dentop.den_list) )
-  # DenTop( dentop.n_loop, dentop.ind_ext_mom, union(dentop.den_list), dentop.mom_shift_collect )
+  DenTop( dentop.n_loop, dentop.indep_ext_mom, union(dentop.den_list) )
+  # DenTop( dentop.n_loop, dentop.indep_ext_mom, union(dentop.den_list), dentop.mom_shift_collect )
 
 union( dentop::DenTop, dentop_list... )::DenTop =
   union( dentop, reduce( union, dentop_list ) )
@@ -83,10 +83,10 @@ function is_valid_dentop(
 ###########################################
 
   n_loop = dentop.n_loop
-  ind_ext_mom = dentop.ind_ext_mom
+  indep_ext_mom = dentop.indep_ext_mom
   den_list = dentop.den_list
 
-  !all( is_ext_mom, ind_ext_mom ) && return false
+  !all( is_ext_mom, indep_ext_mom ) && return false
   if !isempty(den_list)
     unique_den_list = unique( den_list )
     !all( is_FunctionSymbol, unique_den_list ) && return false
@@ -97,7 +97,7 @@ function is_valid_dentop(
 
     max_loop_index = isempty( loop_momenta ) ? 0 : (get_loop_index∘last∘get_loop_momenta)( unique_den_list )
     max_ext_index = isempty( ext_momenta ) ? 0 : (get_ext_index∘last∘get_ext_momenta)( unique_den_list )
-    max_ind_ext_index = isempty( ind_ext_mom ) ? 0 : (first∘findmax∘map)( get_ext_index, ind_ext_mom )
+    max_ind_ext_index = isempty( indep_ext_mom ) ? 0 : (first∘findmax∘map)( get_ext_index, indep_ext_mom )
 
     max_loop_index > n_loop && return false
     max_ext_index > max_ind_ext_index && return false
@@ -126,7 +126,7 @@ function gen_sp_dict(
 ###########################################
 
   n_loop = dentop.n_loop
-  n_ext_mom = length(dentop.ind_ext_mom)
+  n_ext_mom = length(dentop.indep_ext_mom)
   sp_index = 1
   sp_dict = Dict{Basic, Basic}()
 
@@ -136,7 +136,7 @@ function gen_sp_dict(
     sp_index += 1
   end # for ii, jj
 
-  for one_ext_mom ∈ dentop.ind_ext_mom, loop_ii ∈ 1:n_loop
+  for one_ext_mom ∈ dentop.indep_ext_mom, loop_ii ∈ 1:n_loop
     q = Basic("q$(loop_ii)")
     sp_dict[ make_SP(one_ext_mom, q) ] = Basic("sp$(sp_index)")
     sp_index += 1
@@ -204,7 +204,7 @@ function get_cover_indices_list(
 )::Vector{Vector{Int}}
 ###########################################
   n_loop = first( dentop_collect ).n_loop
-  n_ind_ext = length( first(dentop_collect).ind_ext_mom )
+  n_ind_ext = length( first(dentop_collect).indep_ext_mom )
   n_sp::Int = (n_loop + 1) * n_loop / 2 + n_loop * n_ind_ext
   preferred_vac_mom_list = if haskey( preferred_vac_mom_Dict(), n_loop )
     preferred_vac_mom_Dict()[n_loop]
@@ -292,8 +292,8 @@ function make_complete_dentop_collect(
   n_loop = first(dentop_list).n_loop
   @assert haskey( preferred_vac_mom_Dict(), n_loop ) "$(n_loop)-loop is not supported now."
 
-  ind_ext_mom = first(dentop_list).ind_ext_mom
-  n_sp::Int = (n_loop + 1) * n_loop / 2 + n_loop * length( ind_ext_mom )
+  indep_ext_mom = first(dentop_list).indep_ext_mom
+  n_sp::Int = (n_loop + 1) * n_loop / 2 + n_loop * length( indep_ext_mom )
   preferred_vac_mom_lists = preferred_vac_mom_Dict()[n_loop]
 
   incomplete_dentop_list = copy(dentop_list)
@@ -317,7 +317,7 @@ function make_complete_dentop_collect(
         preferred_vac_mom_lists[ selected_index ]
       end # vac_mom_list
 
-      for ext_mom ∈ vcat( zero(Basic), ind_ext_mom ), q ∈ vac_mom_list, the_sign ∈ [1,-1]
+      for ext_mom ∈ vcat( zero(Basic), indep_ext_mom ), q ∈ vac_mom_list, the_sign ∈ [1,-1]
         trial_den = Basic( "Den( $(expand( q + the_sign * ext_mom )), 0, 0 )" )
         trial_top = union( to_be_complete_dentop, trial_den )
         rank_trial_top = (rank∘get_coeff_mat_mom2_sp)(trial_top)
@@ -343,8 +343,8 @@ end # function make_complete_dentop_collect
 
 ###########################################
 function construct_den_topology(
-    amp_dir::String;
-    mom_shift_opt::Bool=true
+    amp_dir::String; 
+    mom_shift_opt::Bool
 )::Vector{DenTop}
 ###########################################
 
@@ -377,7 +377,14 @@ function construct_den_topology(
     @warn "There is nothing to do for tree-level!"
     return DenTop[]
   end # if
-  ind_ext_mom = ext_mom_list[1:end-1]
+  indep_ext_mom = ext_mom_list[1:end-1]
+
+  #--------------------------------
+  jld_file = jldopen( first(amp_file_list), "r" ) 
+  mom_symmetry = to_Basic_dict( jld_file["mom_symmetry"] ) 
+  indep_ext_mom = (unique∘free_symbols∘map)( x->subs(x,mom_symmetry), indep_ext_mom ) 
+  close( jld_file )
+  #--------------------------------
 
   dentop_collect = DenTop[]
   mom_list_collect = Vector{Basic}[]
@@ -421,7 +428,7 @@ function construct_den_topology(
       end # shifted_jld_file
     end # if
 
-    push!( dentop_collect, DenTop( n_loop, ind_ext_mom, den_list) )
+    push!( dentop_collect, DenTop( n_loop, indep_ext_mom, den_list) )
 
     close( jld_file )
   end # for (index, amp_index)
@@ -472,7 +479,7 @@ function construct_den_topology(
 
     jldopen( joinpath( topology_dir, "topology$(index).jld2" ), "w" ) do topology_file
       topology_file["n_loop"] = complete_dentop.n_loop
-      topology_file["indep_ext_mom"] = to_String( complete_dentop.ind_ext_mom )
+      topology_file["indep_ext_mom"] = to_String( complete_dentop.indep_ext_mom )
       topology_file["den_list"] = to_String( complete_dentop.den_list )
 
       topology_file["covering_amplitudes"] = mom_shift_opt ? [
