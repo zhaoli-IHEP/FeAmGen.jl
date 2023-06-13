@@ -1680,7 +1680,9 @@ function generate_amplitude(
 
   n_inc = length(input["incoming"])
   n_loop = input["n_loop"]
+  n_CT = input["QCDCT_order"]
   proc_str = join( [ input["incoming"]; "TO"; input["outgoing"]; "$(n_loop)Loop" ], "_" )
+  proc_str *= iszero(n_CT) ? "" : "_$(n_CT)CT"
 
   couplingfactor = Basic(input["couplingfactor"]) 
 
@@ -1688,6 +1690,11 @@ function generate_amplitude(
   rm( "qgraf_out.dat" )
 
   qgraf_list = qgraf_out["FeynmanDiagrams"]
+  if isnothing( qgraf_list )
+    @warn "QGRAF returns no graph!"
+    write("NoGraph.txt", "QGRAF returns no graph!")
+    return nothing
+  end # if
 
   #------------------------------------------------  
   # Convert qgraf to Graph

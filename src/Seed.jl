@@ -16,6 +16,10 @@ function digest_seed_proc( seed_file::String; model_paths::Vector{String}=[pwd()
   input = YAML.load_file( seed_file )
   #----------------------------------------------------------------------------------------------
   parton_proc_str = join( [ input["incoming"]; "TO"; input["outgoing"]; "$(input["n_loop"])Loop" ], "_" )
+  parton_proc_str *= begin
+    n_CT = input["QCDCT_order"]
+    iszero(n_CT) ? "" : "_$(n_CT)CT"
+  end
 
   box_message( "Read in model \"$(input["model_name"])\" for $(parton_proc_str)" )
 
