@@ -1,6 +1,6 @@
 ###################################
 # const definition
-const preferred_vac_mom_Dict() = Dict{Int,Vector{Vector{Basic}}}(
+const preferred_vac_mom_dict() = Dict{Int,Vector{Vector{Basic}}}(
   1 => [ [ Basic("q1") ] ],
   2 => [ to_Basic( ["q1", "q2", "q1 + q2"] ) ],
   3 => [ to_Basic( ["q1", "q2", "q3", "q1 + q3", "q2 + q3", "q1 + q2 + q3"] ),
@@ -16,7 +16,7 @@ const preferred_vac_mom_Dict() = Dict{Int,Vector{Vector{Basic}}}(
          to_Basic( ["q1", "q2", "q3", "q4",
                     "q1 + q2", "q1 + q3", "q2 + q3", "q2 + q4",
                     "q1 + q2 + q4", "q2 + q3 + q4"] ) ]
-) # end preferred_vac_mom_Dict
+) # end preferred_vac_mom_dict
 ###################################
 
 
@@ -151,7 +151,7 @@ function gen_loop_mom_canon_map(
   @assert q_list == [Basic("q$ii") for ii ∈ 1:n_loop]
   q_null_dict = Dict( q_list .=> zero(Basic) )
   k_null_dict = Dict( k_list .=> zero(Basic) )
-  preferred_flag = n_loop ∈ keys(preferred_vac_mom_Dict())
+  preferred_flag = n_loop ∈ keys(preferred_vac_mom_dict())
 
   # default repl_rule
   chosen_repl_rule = Dict{Basic,Basic}(q_list .=> q_list)
@@ -202,7 +202,7 @@ function gen_loop_mom_canon_map(
       # check preferred vacumm momenta configuration
       preferred_flag &&
         !any( preferred_mom_list->new_vac_mom_list⊆preferred_mom_list,
-                preferred_vac_mom_Dict()[n_loop] ) && break
+                preferred_vac_mom_dict()[n_loop] ) && break
 
       # construct the repl rule
       selected_ext_mom_list = map( mom->subs(mom,q_null_dict), mom_list[collect(selected_mom_indices)] )
