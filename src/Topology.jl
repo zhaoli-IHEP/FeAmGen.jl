@@ -206,8 +206,8 @@ function get_cover_indices_list(
   n_loop = first( dentop_collect ).n_loop
   n_ind_ext = length( first(dentop_collect).indep_ext_mom )
   n_sp::Int = (n_loop + 1) * n_loop / 2 + n_loop * n_ind_ext
-  preferred_vac_mom_list = if haskey( preferred_vac_mom_Dict(), n_loop )
-    preferred_vac_mom_Dict()[n_loop]
+  preferred_vac_mom_list = if haskey( preferred_vac_mom_dict(), n_loop )
+    preferred_vac_mom_dict()[n_loop]
   else
     Vector{Basic}[]
   end
@@ -290,11 +290,11 @@ function make_complete_dentop_collect(
 ###########################################
 
   n_loop = first(dentop_list).n_loop
-  @assert haskey( preferred_vac_mom_Dict(), n_loop ) "$(n_loop)-loop is not supported now."
+  @assert haskey( preferred_vac_mom_dict(), n_loop ) "$(n_loop)-loop is not supported now."
 
   indep_ext_mom = first(dentop_list).indep_ext_mom
   n_sp::Int = (n_loop + 1) * n_loop / 2 + n_loop * length( indep_ext_mom )
-  preferred_vac_mom_lists = preferred_vac_mom_Dict()[n_loop]
+  preferred_vac_mom_lists = preferred_vac_mom_dict()[n_loop]
 
   incomplete_dentop_list = copy(dentop_list)
   complete_dentop_list = DenTop[]
