@@ -91,7 +91,7 @@ function is_matched_preferred_vac_mom_list(
   input_vac_mom_list = (unique∘map)( x->subs(x,vanish_map), mom_list )
 
   n_loop = length(qi_list)
-  vac_mom_list_collection = preferred_vac_mom_dict[n_loop]
+  vac_mom_list_collection = preferred_vac_mom_dict()[n_loop]
   for vac_mom_list in vac_mom_list_collection
     if (isempty∘setdiff)( input_vac_mom_list, vac_mom_list )
       return true
