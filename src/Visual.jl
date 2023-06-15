@@ -153,13 +153,30 @@ function generate_visual_graph( g::Graph, model::Model )::String
   """
 
   ## remove redundant label for `[crossed dot]`
-  num_crossed_dot_str = (length∘findall)( "[crossed dot]", result_str )
-  first_range = findfirst( "[crossed dot]", result_str )
-  while num_crossed_dot_str > 1
-    second_range = findnext( "[crossed dot]", result_str, last(first_range) )
-    result_str = result_str[begin:first(second_range)-1] * result_str[last(second_range)+1:end]
-    num_crossed_dot_str -= 1
+  v_crossed_dot_regex = r"v[1-9]\d* \[crossed dot\]"
+  findnext_start_pointer = 1
+  v_crossed_dot_position = findnext( v_crossed_dot_regex, result_str, findnext_start_pointer )
+  crossed_dot_index_list = Int[]
+  while !isnothing( v_crossed_dot_position )
+    index = parse( Int, match( r"[1-9]\d*", result_str[v_crossed_dot_position] ).match )
+    if index ∈ crossed_dot_index_list
+      result_str = result_str[begin:(first(v_crossed_dot_position)-1)] *
+                    replace( result_str[v_crossed_dot_position], " [crossed dot]" => "") *
+                    result_str[(last(v_crossed_dot_position)+1):end]
+    else
+      push!( crossed_dot_index_list, index )
+    end # if
+    findnext_start_pointer = first( v_crossed_dot_position ) + 1
+    v_crossed_dot_position = findnext( v_crossed_dot_regex, result_str, findnext_start_pointer )
   end # while
+  @assert all( index->(length∘findall)("v$index [crossed dot]",result_str)==1, crossed_dot_index_list )
+  # num_crossed_dot_str = (length∘findall)( "[crossed dot]", result_str )
+  # first_range = findfirst( "[crossed dot]", result_str )
+  # while num_crossed_dot_str > 1
+  #   second_range = findnext( "[crossed dot]", result_str, last(first_range) )
+  #   result_str = result_str[begin:first(second_range)-1] * result_str[last(second_range)+1:end]
+  #   num_crossed_dot_str -= 1
+  # end # while
 
   return result_str
 
