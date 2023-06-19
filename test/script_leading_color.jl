@@ -26,6 +26,7 @@ function main()::Nothing
 
   println( "Leading color is Nc^$(max_xpt)" )
 
+  leading_color_list = Vector{String}()
   for one_jld in jld_list
     file = jldopen( joinpath(dir_name,one_jld), "r" )
     color_list = (to_Basic∘read)( file, "amp_color_list" )
@@ -34,12 +35,14 @@ function main()::Nothing
     for one_color in color_list
       the_coeff = coeff( one_color, nc, Basic(max_xpt) ) 
       if !iszero(the_coeff)
-        println( one_jld )
-        #@show color_list
+        push!( leading_color_list, (first∘splitext)(one_jld) )
         break
       end # if
     end # for one_color
   end # for one_jld
+
+  leading_color_index_list = map( (string∘first), [[ m.match for m in eachmatch(r"\d+", str)] for str in leading_color_list ] )
+  @show leading_color_index_list 
 
   return nothing
 

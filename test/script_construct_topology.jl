@@ -5,7 +5,7 @@ println( "--"^14 )
 @info "Test for `construct_den_topology`"
 
 proc_str_list = [ "b_g_TO_Wminus_t_2Loop", "Wplus_t_TO_Wplus_t_3Loop", "t_TO_t_4Loop" ]
-proc_str = proc_str_list[1]
+proc_str = proc_str_list[3]
 
 rootdir = dirname(@__FILE__)
 proc_dir = joinpath( rootdir, proc_str )
