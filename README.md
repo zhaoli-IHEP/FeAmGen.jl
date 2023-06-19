@@ -1,81 +1,87 @@
-# `FeAmGen.jl`: A julia program for **Fe**ynman **Am**plitude **Gen**eration
+# *FeAmGen.jl*: A julia program for **Fe**ynman **Am**plitude **Gen**eration
 
 ## Requirement
 
-1. `QGRAF`: [main page](http://cfif.ist.utl.pt/~paulo/qgraf.html).
-    Please install it manually.
-2. `FORM`: [main page](https://www.nikhef.nl/~form/) and [GitHub](https://github.com/vermaseren/form).
-    It can be installed automatically via `JuliaBinaryWrappers/FORM_jll.jl`.
+*FeAmGen.jl* needs following external programs. All of them could be installed via Julia Yggdrasil and JLL dependencies.
+
+1. FORM: [main page](https://www.nikhef.nl/~form/) and [GitHub](https://github.com/vermaseren/form);
+2. Nauty: [main page](https://pallini.di.uniroma1.it);
+3. QGRAF: [main page](http://cfif.ist.utl.pt/~paulo/qgraf.html).
 
 ## Installation
 
-`SymEngineExt.jl` should be installed firstly.
+Firstly, please add the [IHEP-Multiloop Julia registry](https://code.ihep.ac.cn/IHEP-Multiloop/JuliaRegistry.git) via
 
 ```julia
 import Pkg
-Pkg.add(url="https://github.com/zhaoli-IHEP/SymEngineExt.jl.git")
+Pkg.Registry.add(
+  Pkg.RegistrySpec(url="https://code.ihep.ac.cn/IHEP-Multiloop/JuliaRegistry.git")
+)
 ```
 
 or in the Julia REPL via
 
 ```julia-repl
-]add https://github.com/zhaoli-IHEP/SymEngineExt.jl.git
+]registry add https://code.ihep.ac.cn/IHEP-Multiloop/JuliaRegistry.git
 ```
 
 Then install `FeAmGen.jl` via
 
 ```julia
 import Pkg
-Pkg.add(url="https://github.com/zhaoli-IHEP/FeAmGen.jl.git")
+Pkg.add("FeAmGen")
 ```
 
 or in the Julia REPL via
 
 ```julia-repl
-]add https://github.com/zhaoli-IHEP/FeAmGen.jl.git
+]add FeAmGen
 ```
 
 ## Usage
 
 This package can be used for the following missions.
 
-1. Generate scalar integral (example: `test/TSI_Test.jl`)
-2. Generate scalar integral with irreducible numerators (example: `test/IRD_Test.jl`)
-3. Generate tensor integral (example: `test/AmpRed_Test.jl`)
-4. Generate process amplitude (examples: `test/DrellYan_Test.jl` etc.)
+1. Generate amplitude for specific process, e.g. [`test/DrellYan_Test.jl`](https://code.ihep.ac.cn/IHEP-Multiloop/FeAmGen.jl/-/blob/main/test/DrellYan_Test.jl) etc.
+2. Construct the topologies for specific process after generation, e.g. [`test/script_construct_topology.jl`](https://code.ihep.ac.cn/IHEP-Multiloop/FeAmGen.jl/-/blob/main/test/script_construct_topology.jl).
+
 ## Main function
 
-### 1. `digest_seed_proc( <seed process file>, <model directory> )`
+### 1. `digest_seed_proc( <seed process file>; <model directory list> )`
 
 Generate input files for the specific process according to generic seed process file and model directory. 
 
-For example
+For example,
 
 ```julia
-digest_seed_proc( "seed_proc.yaml", "Models" )
+digest_seed_proc( "seed_proc.yaml" )
 ```
 ---
 
-### 2. `generate_amp( <process file>, <model directory> )`
+### 2. `generate_amp( <process file>; <model directory list> )`
 
 Generate diagrams and amplitudes according to the process input file previously generated and the model directory.
 
 For example,
 
 ```julia
-generate_amp( "parton_parton_TO_parton_t_0Loop/b_u_TO_d_t.yaml", "Models" )
+generate_amp( "parton_parton_TO_parton_t_0Loop/b_u_TO_d_t.yaml" )
 ```
------------------------------------------------
-
-### 3. `generate_integral( <YAML file> )`
-
-Generate expressions for the given YAML file. The specific usages are shown in the test examples.
-
 ---
+
+### 3. `construct_den_topology( <amplitude directory>; mom_shift_opt::Bool = true )`
+
+Construct topologies for specific process, `mom_shift_opt` for doing the momentum shift or not.
+
+For example,
+
+```julia
+construct_den_topology( "b_g_TO_Wminus_t_2Loop/b_g_TO_Wminus_t_2Loop_amplitudes"; mom_shift_opt=true )
+```
 
 ## Result
 
-The results contain amplitudes in file `amplitude_diagram<number>.out` and the Feynman diagrams in file `visual_diagram<number>.tex`.
+The results contain amplitudes in file `amp<number>.jld2`/`amp<number>.out` and the Feynman diagrams in file `visual_diagram<number>.tex`.
 Explicitly one could use `lualatex visual_diagram<number>.tex` to generate PDF file with `tikz-feynman.sty`.
 
 ## Notice
