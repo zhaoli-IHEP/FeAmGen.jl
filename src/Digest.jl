@@ -302,6 +302,7 @@ function readin_model(
     param_value = replace( param_value, "cmath.pi" => "pi" )
     param_value = replace( param_value, "complexconjugate" => "conj" )
     param_value = replace( param_value, "**" => "^" )
+    param_value = replace( param_value, "//" => "/" ) 
 
     push!( parameter_dict, Basic(param_name) => Basic(param_value) )
   end # for param
@@ -319,6 +320,7 @@ function readin_model(
     coupling_value = replace( coupling_value, "cmath.pi" => "pi" )
     coupling_value = replace( coupling_value, "complexconjugate" => "conj" )
     coupling_value = replace( coupling_value, "**" => "^" )
+    coupling_value = replace( coupling_value, "//" => "/" )
 
     coupling_dict[Basic(coupling_name)] = Basic(coupling_value)
   end # for coupling

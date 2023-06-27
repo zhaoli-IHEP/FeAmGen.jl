@@ -1372,7 +1372,7 @@ function write_out_amplitude(
     "  $(one_pair)\n" )
   end # for one_pair
 
-  wirte( amp_file, "Model Couplings: \n" )
+  write( amp_file, "Model Couplings: \n" )
   for one_pair in coupling_dict
     write( amp_file, "  $(one_pair)\n" )
   end # for one_pair
