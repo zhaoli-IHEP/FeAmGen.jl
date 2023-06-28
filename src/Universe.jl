@@ -103,6 +103,7 @@ end # struct Interaction
   interaction_list::Vector{Interaction}
   sorted_kf_list_dict::Dict{Vector{Int64},Interaction}
   parameter_dict::Dict{Basic,Basic}
+  coupling_dict::Dict{Basic,Basic}
 ```
 """
 struct Model
@@ -114,6 +115,7 @@ struct Model
   interaction_list::Vector{Interaction}
   sorted_kf_list_dict::Dict{Vector{Int64},Interaction}
   parameter_dict::Dict{Basic,Basic}
+  coupling_dict::Dict{Basic,Basic}
 end # struct Model
 #########################
 
