@@ -1262,6 +1262,7 @@ end # function simplify_color_factors
         n_inc::Int64, 
         n_loop::Int64, 
         graph_index::Int64, 
+        signed_symmetry_factor::Basic,
         couplingfactor::Basic, 
         parameter_dict::Dict{Basic,Basic},
         coupling_dict::Dict{Basic,Basic},
@@ -1285,6 +1286,7 @@ function write_out_amplitude(
     n_inc::Int64, 
     n_loop::Int64, 
     graph_index::Int64, 
+    signed_symmetry_factor::Basic,
     couplingfactor::Basic, 
     parameter_dict::Dict{Basic,Basic},
     coupling_dict::Dict{Basic,Basic},
@@ -1365,6 +1367,8 @@ function write_out_amplitude(
     "    $(amp_str); \n" )
   end # for ii
 
+  write( amp_file, "Signed Symmetry Factor: $(signed_symmetry_factor);\n" )
+
   write( amp_file, 
     "Model Parameters: \n" )
   for one_pair in parameter_dict
@@ -1404,6 +1408,7 @@ function write_out_amplitude(
     write( file, "model_coupling_dict", to_String_dict(coupling_dict) )
     write( file, "amp_color_list",  string.(amp_color_list) )
     write( file, "amp_lorentz_list",  amp_lorentz_str_list )
+    write( file, "signed_symmetry_factor", string(signed_symmetry_factor) )
   end # file
 
   return nothing
@@ -1864,9 +1869,15 @@ function generate_amplitude(
     loop_den_list, lorentz_list = canonicalize_amp( loop_den_list, lorentz_list )
     #-----------------------------------------------------------------
 
+    #-----------------------------------------------------------------
+    # Get the signed symmetry factor for one diagram
+    signed_symmetry_factor = Basic( g.property[:sign] ) * Basic( g.property[:symmetry_factor] )
+    #-----------------------------------------------------------------
+
     min_ep_xpt = input["Amp_Min_Ep_Xpt"]
     max_ep_xpt = input["Amp_Max_Ep_Xpt"]
-    write_out_amplitude( n_inc, n_loop, graph_index, couplingfactor, model.parameter_dict, model.coupling_dict, 
+    write_out_amplitude( n_inc, n_loop, graph_index, signed_symmetry_factor,
+        couplingfactor, model.parameter_dict, model.coupling_dict, 
         ext_mom_list, scale2_list, kin_relation, baseINC_script_str, 
         color_list, lorentz_list, loop_den_list, loop_den_xpt_list, 
         mom_symmetry, color_symmetry, min_ep_xpt, max_ep_xpt, proc_str )
