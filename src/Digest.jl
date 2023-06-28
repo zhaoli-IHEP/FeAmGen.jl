@@ -302,16 +302,34 @@ function readin_model(
     param_value = replace( param_value, "cmath.pi" => "pi" )
     param_value = replace( param_value, "complexconjugate" => "conj" )
     param_value = replace( param_value, "**" => "^" )
+    param_value = replace( param_value, "//" => "/" ) 
 
     push!( parameter_dict, Basic(param_name) => Basic(param_value) )
   end # for param
 
+  coupling_dict = Dict{Basic, Basic}()
+  for coupling ∈ py_model.all_couplings
+    coupling_name = lowercase( coupling.name )
+    coupling_value = lowercase( coupling.value )
+
+    coupling_value = replace( coupling_value, "complex(0,1)" => "I" )
+    coupling_value = replace( coupling_value, "cmath.cos" => "cos" )
+    coupling_value = replace( coupling_value, "cmath.sin" => "sin" )
+    coupling_value = replace( coupling_value, "cmath.sqrt(2)" => "sqrt2" )
+    coupling_value = replace( coupling_value, "cmath.sqrt" => "sqrt" )
+    coupling_value = replace( coupling_value, "cmath.pi" => "pi" )
+    coupling_value = replace( coupling_value, "complexconjugate" => "conj" )
+    coupling_value = replace( coupling_value, "**" => "^" )
+    coupling_value = replace( coupling_value, "//" => "/" )
+
+    coupling_dict[Basic(coupling_name)] = Basic(coupling_value)
+  end # for coupling
 
   #--------------------------------------
   # Universe Model instance
   model = Model( model_name, input["unitary_gauge"]::Bool, 
                  particle_list, particle_name_dict, particle_kf_dict, 
-                 interaction_list, sorted_kf_list_dict, parameter_dict )
+                 interaction_list, sorted_kf_list_dict, parameter_dict, coupling_dict )
   #--------------------------------------
 
   return model
