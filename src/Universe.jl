@@ -406,3 +406,21 @@ Call `vectorized_tensor_product( iters...; f=(elem -> join(elem, ',')) )` for `S
 vectorized_tensor_product_String(iters...) = vectorized_tensor_product(iters...; f=(elem -> join(elem, ',')))
 ###########################################
 
+###########################################
+function get_diagram_index( file_name::String )::Int
+###########################################
+  # @assert isfile(amp_file_name)
+  file_basename = basename( file_name )
+
+  support_file_type = [ "jld2", "out", "pdf", "tex" ]
+  regex_list = map( str -> Regex("[1-9]\\d*\\.$str\$"), support_file_type )
+
+  file_type_index = findfirst( occursin(file_basename), regex_list )
+  @assert !isnothing(file_type_index) "Invalid file name: $file_basename"
+
+  str_range = findfirst(regex_list[file_type_index], file_basename)
+  str = file_basename[str_range]
+
+  index_str_range = findfirst(r"^[1-9]\d*", str)
+  return  parse(Int, str[index_str_range])
+end
