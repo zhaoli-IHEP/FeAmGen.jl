@@ -342,6 +342,27 @@ function make_complete_dentop_collect(
 end # function make_complete_dentop_collect
 
 ###########################################
+function readin_dentop_collect( dentop_dir::String )::Vector{DenTop}
+###########################################
+  @assert isdir( dentop_dir )
+  dentop_file_list = readdir( dentop_dir; join=true, sort=false )
+  filter!( isfile, dentop_file_list )
+  filter!( contains(r"^topology[1-9]\d*.jld2$") ∘ basename, dentop_file_list )
+  sort!( dentop_file_list; by=get_diagram_index )
+
+  dentop_collect = DenTop[]
+  for dentop_file ∈ dentop_file_list
+    dentop = load( dentop_file )
+    push!( dentop_collect, DenTop( dentop["n_loop"],
+                                    to_Basic( dentop["indep_ext_mom"] ),
+                                    to_Basic( dentop["den_list"] ) ) )
+  end # for dentop_file
+
+  return dentop_collect
+
+end # function readin_dentop_collect
+
+###########################################
 function construct_den_topology(
     amp_dir::String; 
     mom_shift_opt::Bool
