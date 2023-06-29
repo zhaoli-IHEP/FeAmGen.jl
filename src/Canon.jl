@@ -125,18 +125,11 @@ function normalize_loop_mom_single(
 )::Basic
 ###################################
 
-  leading_qi = (first∘get_loop_momenta)( [ loop_mom ] )
-  # qi_list = free_symbols(loop_mom)
-  # filter!(sym -> (first∘string)(sym) == 'q', qi_list)
-  # sort!(qi_list, by=q->parse(Int, string(q)[2:end]))
-  # leading_qi = first(qi_list)
+  q_list = get_loop_momenta( [ loop_mom ] )
+  isempty(q_list) && return expand( loop_mom )
+  qi_coeff = SymEngine.coeff( expand(loop_mom), first(q_list))
 
-  loop_mom = expand(loop_mom)
-  if SymEngine.coeff(loop_mom,leading_qi) < 0
-    return expand(-loop_mom)
-  end # if
-
-  return loop_mom
+  return expand( loop_mom / qi_coeff )
 
 end # function normalize_loop_mom_single
 
@@ -180,8 +173,7 @@ end # function normalize_loop_mom
 # Created by Quan-feng Wu
 # Feb. 16 2023
 function gen_loop_mom_canon_map(
-    mom_list::Vector{Basic},
-    mom_list_collect::Vector{Vector{Basic}}=Vector{Basic}[]
+    mom_list::Vector{Basic}
 )::Dict{Basic,Basic}
 #########################################################
 
@@ -191,20 +183,17 @@ function gen_loop_mom_canon_map(
   n_loop = isempty(q_list) ? 0 : (get_loop_index∘last)( q_list )
   @assert q_list == [Basic("q$ii") for ii ∈ 1:n_loop]
   q_null_dict = Dict( q_list .=> zero(Basic) )
-  k_null_dict = Dict( k_list .=> zero(Basic) )
   preferred_flag = n_loop ∈ keys(preferred_vac_mom_dict())
 
   # default repl_rule
-  chosen_repl_rule = Dict{Basic,Basic}(q_list .=> q_list)
+  chosen_repl_rule = Dict{Basic,Basic}()
   chosen_repl_order = Inf
 
   # find all branches of the loop momenta.
-  mom_q_coeff_mat = coefficient_matrix( mom_list, q_list )
+  normalized_mom_list = map( normalize_loop_mom_single, mom_list )
+  mom_q_coeff_mat = coefficient_matrix( normalized_mom_list, q_list )
   @assert (isempty∘setdiff)( unique(mom_q_coeff_mat), Basic[-1,0,1] )
-  mom_q_coeff_list = filter( !iszero, (collect∘eachrow)( mom_q_coeff_mat ) )
-  mom_q_coeff_list = map( coeff_list->coeff_list./coeff_list[findfirst(!iszero,coeff_list)],
-                            mom_q_coeff_list )
-  unique!( mom_q_coeff_list )
+  mom_q_coeff_list = (unique∘collect∘eachrow)( mom_q_coeff_mat )
   sort!( mom_q_coeff_list; 
           by=coeff_list->begin
             num_q = (length∘findall)(!iszero,coeff_list)
@@ -212,72 +201,58 @@ function gen_loop_mom_canon_map(
             num_q, new_coeff_list
           end )
   vac_mom_list = [ sum( mom_q_coeff .* q_list ) for mom_q_coeff ∈ mom_q_coeff_list ]
-  branch_indices_list = Vector{Int}[]
+  branch_mom_indices_list = Vector{Int}[]
   for mom_q_coeff ∈ mom_q_coeff_list
-    branch_indices = findall( row->row==mom_q_coeff||row==-mom_q_coeff,
-                                eachrow(mom_q_coeff_mat) )
-    push!( branch_indices_list, branch_indices )
+    mom_indices = findall( ==(mom_q_coeff), eachrow(mom_q_coeff_mat) )
+    push!( branch_mom_indices_list, mom_indices )
   end # for mom_q_coeff
 
-  # cover flag
-  chosen_cover_flag = false
-  has_cover_flag = false
-
-  for selected_branch_indices_list ∈ permutations( branch_indices_list, length(q_list) ),
-      selected_mom_indices ∈ Iterators.product( selected_branch_indices_list... )
+  for selected_branch ∈ permutations( eachindex(vac_mom_list), length(q_list) )
     for sign_list ∈ Iterators.product([(1, -1) for _ in q_list]...)
 
       # check invertible q coeff matrix
-      selected_vac_mom_list = map( mom->subs(mom,k_null_dict), mom_list[collect(selected_mom_indices)] )
+      selected_vac_mom_list = vac_mom_list[ selected_branch ]
       selected_coeff_mat = coefficient_matrix( selected_vac_mom_list, q_list )
       (iszero∘expand∘get_det)( selected_coeff_mat ) && break
       inv_selected_coeff_mat = inv( selected_coeff_mat )
 
       # check q signs are all positive or all negative
       vac_repl_rule = Dict( q_list .=> inv_selected_coeff_mat * (q_list .* sign_list) )
-      new_vac_mom_list = map( vac_mom->(expand∘subs)(vac_mom,vac_repl_rule), vac_mom_list )
+      new_vac_mom_list = map( mom->(expand∘subs)(mom,vac_repl_rule), vac_mom_list )
       map!( normalize_loop_mom_single, new_vac_mom_list, new_vac_mom_list )
       new_coeff_mat = coefficient_matrix( new_vac_mom_list, q_list )
       !all( ≥(0), new_coeff_mat ) && continue
 
-      # check preferred vacumm momenta configuration
+      # check vacumm momenta is preferred
       preferred_flag &&
         !any( preferred_mom_list->new_vac_mom_list⊆preferred_mom_list,
-                preferred_vac_mom_dict()[n_loop] ) && break
+                preferred_vac_mom_dict()[n_loop] ) && continue
 
       # construct the repl rule
-      selected_ext_mom_list = map( mom->subs(mom,q_null_dict), mom_list[collect(selected_mom_indices)] )
-      this_repl_rule = Dict( q_list .=>
-                              expand.( inv_selected_coeff_mat * (sign_list .* q_list .- selected_ext_mom_list) ) )
-      this_mom_list = map( mom->(expand∘subs)(mom,this_repl_rule), mom_list )
-      map!( normalize_loop_mom_single, this_mom_list, this_mom_list )
-      (!isempty∘setdiff)( 
-        (unique∘map)(abs, coefficient_matrix( this_mom_list, k_list )), Basic[0,1] ) && continue
+      for selected_mom_indices ∈ Iterators.product( branch_mom_indices_list[selected_branch]... )
+        selected_ext_mom_list = map( mom->subs(mom,q_null_dict), normalized_mom_list[collect(selected_mom_indices)] )
+        repl_rule = Dict( q_list .=> map( expand, inv_selected_coeff_mat * (sign_list .* q_list .- selected_ext_mom_list) ) )
+        new_mom_list = map( mom->(expand∘subs)(mom,repl_rule), normalized_mom_list )
+        map!( normalize_loop_mom_single, new_mom_list, new_mom_list )
+        (!isempty∘setdiff)( (unique∘map)( abs, coefficient_matrix( new_mom_list, k_list )),
+                              Basic[0,1] ) && continue
 
-      # check cover
-      this_cover_flag = false
-      if any( mom_list->this_mom_list⊆mom_list||mom_list⊆this_mom_list, mom_list_collect )
-        has_cover_flag = true
-        this_cover_flag = true
-      elseif has_cover_flag
-        continue
-      end # if
-      this_repl_order = get_sort_order( this_mom_list )
+        repl_order = get_sort_order( new_mom_list )
 
-      # check order
-      if this_cover_flag && !chosen_cover_flag
-        chosen_repl_order = this_repl_order
-        chosen_repl_rule = this_repl_rule
-        chosen_cover_flag = true
-      elseif this_repl_order < chosen_repl_order
-        chosen_repl_order = this_repl_order
-        chosen_repl_rule = this_repl_rule
-      # elseif this_repl_order == chosen_repl_order
-        # @warn "Two equivalent replacement rules are found."
-      end # if
+        # check order
+        if repl_order < chosen_repl_order
+          chosen_repl_order = repl_order
+          chosen_repl_rule = repl_rule
+        # elseif this_repl_order == chosen_repl_order
+          # @warn "Two equivalent replacement rules are found."
+        end # if
+      end # for selected_mom_indices
     end # for sign_list
   end # for selected_branch_indices_list, selected_mom_indices
 
+  for key ∈ (collect∘keys)(chosen_repl_rule)
+    chosen_repl_rule[key] == key && delete!( chosen_repl_rule, key )
+  end # for key
   return chosen_repl_rule
 
 end # function gen_loop_mom_canon_map
@@ -338,7 +313,6 @@ function canonicalize_amp(
 
   mom_list = map( first∘get_args, loop_den_list )
   canon_map = gen_loop_mom_canon_map( mom_list )
-  # canon_map = gen_loop_mom_canon_map( mom_list, mom_list_collect )
 
   new_loop_den_list = map( den->subs(den,canon_map), loop_den_list )
   new_loop_den_list = normalize_loop_mom( new_loop_den_list )

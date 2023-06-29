@@ -5,8 +5,6 @@ struct DenTop
   n_loop::Int
   indep_ext_mom::Vector{Basic}
   den_list::Vector{Basic}
-  # cover_indices::Vector{Int}
-  # mom_shift_collect::Dict{Int,Dict{Basic,Basic}}
 end # mutable struct DenTop
 ###########################################
 
@@ -16,8 +14,8 @@ end # mutable struct DenTop
 isempty( dentop::DenTop ) = isempty( dentop.den_list )
 
 issubset( dentop1::DenTop, dentop2::DenTop )::Bool =
-    dentop1.n_loop == dentop2.n_loop &&
-    dentop1.indep_ext_mom == dentop2.indep_ext_mom &&
+    dentop1.n_loop ≤ dentop2.n_loop &&
+    issubset( dentop1.indep_ext_mom, dentop2.indep_ext_mom ) &&
     issubset( dentop1.den_list, dentop2.den_list )
 
 length( dentop::DenTop )::Int64 = length( dentop.den_list )
@@ -33,22 +31,7 @@ function union(
 
   new_den_list = union( dentop1.den_list, dentop2.den_list )
 
-  # new_mom_shift_collect = Dict{Int,Dict{Basic,Basic}}()
-  # for key ∈ setdiff( keys( dentop1.mom_shift_collect ), keys( dentop2.mom_shift_collect ) )
-  #   new_mom_shift_collect[key] = dentop1.mom_shift_collect[key]
-  # end # for key
-  # for key ∈ setdiff( keys( dentop2.mom_shift_collect ), keys( dentop1.mom_shift_collect ) )
-  #   new_mom_shift_collect[key] = dentop2.mom_shift_collect[key]
-  # end # for key
-  # for key ∈ intersect( keys( dentop1.mom_shift_collect ), keys( dentop2.mom_shift_collect ) )
-  #   _, min_index = findmin( string, [ dentop1.mom_shift_collect[key], dentop2.mom_shift_collect[key] ] )
-  #   min_index == 1 && ( new_mom_shift_collect[key] = dentop1.mom_shift_collect[key] )
-  #   min_index == 2 && ( new_mom_shift_collect[key] = dentop2.mom_shift_collect[key] )
-  # end # for key
-  # @assert keys(new_mom_shift_collect) == union( keys(dentop1.mom_shift_collect), keys(dentop2.mom_shift_collect) )
-
   return DenTop( dentop1.n_loop, dentop1.indep_ext_mom, new_den_list )
-  # return DenTop( dentop1.n_loop, dentop1.indep_ext_mom, new_den_list, new_mom_shift_collect )
 end # function union
 
 ###########################################
@@ -62,15 +45,12 @@ function union(
   @assert get_ext_momenta( den_list ) ⊆ dentop.indep_ext_mom
 
   return DenTop( dentop.n_loop, dentop.indep_ext_mom, union(dentop.den_list,den_list) )
-  # return DenTop( dentop.n_loop, dentop.indep_ext_mom, union(dentop.den_list,den_list), dentop.mom_shift_collect )
-
 end # function union
 
 union( dentop::DenTop, den::Basic ) = union( dentop, [den] )
 
 union( dentop::DenTop )::DenTop =
   DenTop( dentop.n_loop, dentop.indep_ext_mom, union(dentop.den_list) )
-  # DenTop( dentop.n_loop, dentop.indep_ext_mom, union(dentop.den_list), dentop.mom_shift_collect )
 
 union( dentop::DenTop, dentop_list... )::DenTop =
   union( dentop, reduce( union, dentop_list ) )
@@ -322,7 +302,6 @@ function make_complete_dentop_collect(
         trial_top = union( to_be_complete_dentop, trial_den )
         rank_trial_top = (rank∘get_coeff_mat_mom2_sp)(trial_top)
         if rank_trial_top > length(to_be_complete_dentop)
-          # @show n_sp, rank_trial_top
           to_be_complete_dentop = trial_top
           rank_trial_top == n_sp && break
         end # if
@@ -363,9 +342,92 @@ function readin_dentop_collect( dentop_dir::String )::Vector{DenTop}
 end # function readin_dentop_collect
 
 ###########################################
+function find_mom_shift(
+    den_list::Vector{Basic},
+    ref_dentop_collect::Vector{DenTop}
+)::Dict{Basic,Basic}
+###########################################
+  isempty( ref_dentop_collect ) && return Dict{Basic,Basic}()
+  @assert all( den->get_name(den)=="Den"&&(length∘get_args)(den)==3, den_list)
+  @funs Den
+
+  # get information
+  q_list = get_loop_momenta( den_list )
+  k_list = get_ext_momenta( den_list )
+  n_loop = isempty(q_list) ? 0 : (get_loop_index∘last)( q_list )
+  preffered_vac_mom_lists = preferred_vac_mom_dict()[n_loop]
+  @assert q_list == [ Basic("q$ii") for ii ∈ 1:n_loop ]
+  q_null_dict = Dict( q_list .=> zero(Basic) )
+
+  # find all branches of the loop momenta.
+  mom_list = map( normalize_loop_mom_single∘first∘get_args,
+                  den_list )
+  mom_q_coeff_mat = coefficient_matrix( mom_list, q_list )
+  @assert (isempty∘setdiff)( unique(mom_q_coeff_mat), Basic[-1,0,1] )
+  mom_q_coeff_list = (unique∘collect∘eachrow)( mom_q_coeff_mat )
+  sort!( mom_q_coeff_list; 
+          by=coeff_list->begin
+            num_q = (length∘findall)(!iszero,coeff_list)
+            new_coeff_list = map( coeff->subs(coeff,Dict(Basic(-1)=>2,Basic(0)=>3)), coeff_list )
+            num_q, new_coeff_list
+          end )
+  vac_mom_list = [ sum( mom_q_coeff .* q_list ) for mom_q_coeff ∈ mom_q_coeff_list ]
+  branch_mom_indices_list = Vector{Int}[]
+  for mom_q_coeff ∈ mom_q_coeff_list
+    mom_indices = findall( ==(mom_q_coeff), eachrow(mom_q_coeff_mat) )
+    push!( branch_mom_indices_list, mom_indices )
+  end # for mom_q_coeff
+
+  for selected_branch ∈ permutations( eachindex(vac_mom_list), length(q_list) )
+    for sign_list ∈ Iterators.product( [ (1, -1) for _ ∈ q_list ]... )
+
+      # check invertible q coeff matrix
+      selected_vac_mom_list = vac_mom_list[ selected_branch ]
+      selected_coeff_mat = coefficient_matrix( selected_vac_mom_list, q_list )
+      (iszero∘expand∘get_det)( selected_coeff_mat ) && break
+      inv_selected_coeff_mat = inv( selected_coeff_mat )
+
+      # check vacumm momenta is preferred
+      vac_repl_rule = Dict( q_list .=> inv_selected_coeff_mat * ( q_list .* sign_list ) )
+      new_vac_mom_list = map( mom->(expand∘subs)(mom,vac_repl_rule), vac_mom_list )
+      map!( normalize_loop_mom_single, new_vac_mom_list, new_vac_mom_list )
+      !any( preffered_vac_mom_list->new_vac_mom_list⊆preffered_vac_mom_list,
+            preffered_vac_mom_lists ) && continue
+      # @info "checked vacumm momenta is preferred."
+
+      # construct the repl rule
+      for selected_mom_indices ∈ Iterators.product( branch_mom_indices_list[selected_branch]... )
+        selected_ext_mom_list = map( mom->subs(mom,q_null_dict), mom_list[collect(selected_mom_indices)] )
+        repl_rule = Dict( q_list .=> map( expand, inv_selected_coeff_mat * (sign_list .* q_list .- selected_ext_mom_list) ) )
+        new_mom_list = map( mom->(expand∘subs)(mom,repl_rule), mom_list )
+        map!( normalize_loop_mom_single, new_mom_list, new_mom_list )
+        (!isempty∘setdiff)( (unique∘map)( abs, coefficient_matrix( new_mom_list, k_list ) ),
+                              Basic[0,1] ) && continue
+
+        # check cover
+        new_den_list = [  begin
+                            _, mass, ieta = get_args(den)
+                            Den(new_mom, mass, ieta)
+                          end for (new_mom, den) ∈ zip( new_mom_list, den_list ) ]
+        new_dentop = DenTop( n_loop, k_list, new_den_list )
+        if any( dentop->new_dentop⊆dentop||dentop⊆new_dentop, ref_dentop_collect )
+          for key ∈ (collect∘keys)( repl_rule )
+            repl_rule[key] == key && delete!( repl_rule, key )
+          end # for key
+          return repl_rule
+        end # if
+      end # for selected_mom_indices
+    end # for sign_list
+  end # for selected_branch_indices_list
+
+  return Dict{Basic,Basic}()
+end # function find_mom_shift
+
+###########################################
 function construct_den_topology(
     amp_dir::String; 
-    mom_shift_opt::Bool
+    mom_shift_opt::Bool,
+    ref_dentop_collect::Union{String,Vector{DenTop}}=DenTop[],
 )::Vector{DenTop}
 ###########################################
 
@@ -381,9 +443,16 @@ function construct_den_topology(
   end # topology_dir
   mom_shift_opt && bk_mkdir( shifted_amp_dir )
   bk_mkdir( topology_dir )
+  dentop_collect = !mom_shift_opt ? DenTop[] :
+                    ( isa(ref_dentop_collect, String) ?
+                        readin_dentop_collect(ref_dentop_collect) :
+                        ref_dentop_collect )
+  @info "Read in $(length(dentop_collect)) reference topologies."
 
-  amp_file_list = filter( file_name->(!isnothing∘match)(r"^amp[1-9]\d*.jld2$",basename(file_name)), readdir( amp_dir; join=true, sort=false ) )
-  amp_file_indices = map( file_name->parse(Int,match(r"[1-9]\d*",basename(file_name)).match), amp_file_list )
+  amp_file_list = readdir( amp_dir; join=true, sort=false )
+  filter!( isfile, amp_file_list )
+  filter!( contains(r"^amp[1-9]\d*.jld2$") ∘ basename, amp_file_list )
+  amp_file_indices = map( get_diagram_index, amp_file_list )
   amp_order = sortperm( amp_file_indices )
   amp_file_list = amp_file_list[amp_order]
   shifted_amp_file_list = mom_shift_opt ? map( file_name->joinpath(shifted_amp_dir,replace(basename(file_name),r"^amp"=>"shifted_amp")),
@@ -394,11 +463,17 @@ function construct_den_topology(
   n_loop, ext_mom_list = jldopen( first(amp_file_list), "r" ) do jld_file
     jld_file["n_loop"], to_Basic( jld_file["ext_mom_list"] )
   end # n_loop, ext_mom_list
+  @assert all( amp_file->jldopen( amp_file, "r" ) do jld_file
+                            jld_file["n_loop"] == n_loop &&
+                            to_Basic( jld_file["ext_mom_list"] ) == ext_mom_list
+                          end, amp_file_list[2:end] ) "The amplitude files are not consistent!"
   if iszero(n_loop)
     @warn "There is nothing to do for tree-level!"
     return DenTop[]
   end # if
-  indep_ext_mom = ext_mom_list[1:end-1]
+  indep_ext_mom = ext_mom_list[begin:end-1]
+  mom_shift_opt && @assert all( ref_dentop->ref_dentop.n_loop==n_loop&&ref_dentop.indep_ext_mom==indep_ext_mom,
+                                dentop_collect ) "The reference den-topologies are not consistent with the amplitudes!"
 
   #--------------------------------
   jld_file = jldopen( first(amp_file_list), "r" ) 
@@ -407,8 +482,7 @@ function construct_den_topology(
   close( jld_file )
   #--------------------------------
 
-  dentop_collect = DenTop[]
-  mom_list_collect = Vector{Basic}[]
+  backup_dentop_collect = DenTop[]
   mom_shift_collect = Dict{Basic,Basic}[]
   for (index, amp_index) ∈ enumerate( amp_file_indices )
     amp_file = amp_file_list[index]
@@ -422,23 +496,23 @@ function construct_den_topology(
       @info "Finding momenta shift for $amp_index/$(last(amp_file_indices))..."
 
       amp_list = to_Basic( jld_file["amp_lorentz_list"] )
-      mom_list = map( first∘get_args, den_list )
+      # mom_list = map( first∘get_args, den_list )
 
-      mom_shift = gen_loop_mom_canon_map( mom_list, mom_list_collect )
+      mom_shift = find_mom_shift( den_list, dentop_collect )
       map!( den->subs(den,mom_shift), den_list, den_list )
       map!( amp->subs(amp,mom_shift), amp_list, amp_list )
       den_list = normalize_loop_mom( den_list )
-      mom_list = map( first∘get_args, den_list )
-
-      covering_indices = findall( exist_mom_list->exist_mom_list⊆mom_list, mom_list_collect )
-      if !isempty(covering_indices)
-        deleteat!( mom_list_collect, covering_indices )
-        push!( mom_list_collect, mom_list )
-      elseif !any( exist_mom_list->mom_list⊆exist_mom_list, mom_list_collect )
-        push!( mom_list_collect, mom_list )
-      end # if
-
+      # mom_list = map( first∘get_args, den_list )
+      dentop = DenTop( n_loop, indep_ext_mom, den_list )
+      push!( backup_dentop_collect, dentop )
       push!( mom_shift_collect, mom_shift )
+
+      covered_indices = findfirst( ref_dentop->dentop⊆ref_dentop, dentop_collect )
+      if isnothing( covered_indices )
+        covering_indices = findall( ref_dentop->ref_dentop⊆dentop, dentop_collect )
+        deleteat!( dentop_collect, covering_indices )
+        push!( dentop_collect, dentop )
+      end # if
 
       jldopen( shifted_amp_file, "w" ) do shifted_jld_file
         for key ∈ filter( key->key∉("amp_lorentz_list","loop_den_list"), keys(jld_file) )
@@ -449,11 +523,8 @@ function construct_den_topology(
       end # shifted_jld_file
     end # if
 
-    push!( dentop_collect, DenTop( n_loop, indep_ext_mom, den_list) )
-
     close( jld_file )
   end # for (index, amp_index)
-  backup_dentop_collect = copy( dentop_collect )
 
   unique!( dentop->reduce(*,dentop.den_list), dentop_collect )
   dentop_collect = get_superior_dentop_collect( dentop_collect )
@@ -468,14 +539,19 @@ function construct_den_topology(
   file = open( joinpath( topology_dir, mom_shift_opt ? "shifted_topology.out" : "topology.out" ), "w" )
   line_str = "-"^80
   remaining_indices = (collect∘eachindex)( backup_dentop_collect )
+  chosen_indices = Int[]
   for (index, complete_dentop) ∈ enumerate( complete_dentop_collect )
     @assert is_valid_dentop(complete_dentop)
     pos_list = findall( dentop->dentop⊆complete_dentop, backup_dentop_collect )
-    setdiff!(remaining_indices, pos_list)
+    isempty( remaining_indices ) && break
+    isempty( pos_list ) && continue
+    push!( chosen_indices, index )
+    numbering = length( chosen_indices )
+    setdiff!( remaining_indices, pos_list )
 
     println()
     println( line_str )
-    println( "Complete topology #$(index) covers files:" )
+    println( "Complete topology #$(numbering) covers files:" )
     map( println, amp_file_list[ pos_list ] )
     println( line_str )
     map( println, complete_dentop.den_list )
@@ -498,7 +574,7 @@ function construct_den_topology(
       end # for shifted_amp_file
     end # if mom_shift_opt
 
-    jldopen( joinpath( topology_dir, "topology$(index).jld2" ), "w" ) do topology_file
+    jldopen( joinpath( topology_dir, "topology$(numbering).jld2" ), "w" ) do topology_file
       topology_file["n_loop"] = complete_dentop.n_loop
       topology_file["indep_ext_mom"] = to_String( complete_dentop.indep_ext_mom )
       topology_file["den_list"] = to_String( complete_dentop.den_list )
@@ -514,14 +590,17 @@ function construct_den_topology(
     end # topology_file
 
     cover_amp_str = mom_shift_opt ? 
-                      join( [ amp_file_list[pos] * "\n  momenta shift:\n" *
+                      join( [ amp_file_list[pos] *
+                              ( isempty(mom_shift_collect[pos]) ? "" :
+                                "\n  momenta shift:\n" *
                                 join( [ "  ├─ $(key) -> $(value)"
-                                          for (key,value) ∈ mom_shift_collect[pos] ], "\n" )
-                                for pos ∈ pos_list ], "\n" ) :
+                                        for (key,value) ∈ mom_shift_collect[pos] ],
+                                      "\n" ) )
+                            for pos ∈ pos_list ], "\n" ) :
                       join( amp_file_list[pos_list], "\n" )
     write( file, """
     $(line_str)
-    Complete topology #$(index) covers files:
+    Complete topology #$(numbering) covers files:
     $(cover_amp_str)
     $(line_str)
     $(join( map(string,complete_dentop.den_list), "\n" ))
@@ -535,7 +614,7 @@ function construct_den_topology(
 
   box_message( "Information is in topology.out" )
 
-  return complete_dentop_collect
+  return complete_dentop_collect[ chosen_indices ]
 
 end # function construct_den_topology
 
