@@ -303,8 +303,7 @@ end # function get_sort_order
 function canonicalize_amp(
     loop_den_list::Vector{Basic},
     amp_lorentz_list::Vector{Basic}
-    # mom_list_collect::Vector{Vector{Basic}}=Vector{Basic}[]
-)::Tuple{Vector{Basic},Vector{Basic}}
+)::Tuple{Vector{Basic},Vector{Basic},Dict{Basic,Basic}}
 ######################################################
 
   # n_loop = get_n_loop( loop_den_list )
@@ -329,7 +328,7 @@ function canonicalize_amp(
   @assert all( ≥(0), unique_coeff_list ) "$new_mom_list"
   # CHECK end
 
-  return new_loop_den_list, new_amp_lorentz_list
+  return new_loop_den_list, new_amp_lorentz_list, canon_map
 
 end # function canonicalize_amp
 
