@@ -187,7 +187,7 @@ function gen_loop_mom_canon_map(
 
   # default repl_rule
   chosen_repl_rule = Dict{Basic,Basic}()
-  chosen_repl_order = get_sort_order( mom_list )
+  chosen_repl_order = [Inf, Inf]
 
   # find all branches of the loop momenta.
   normalized_mom_list = map( normalize_loop_mom_single, mom_list )
