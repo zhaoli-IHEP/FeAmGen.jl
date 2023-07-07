@@ -37,7 +37,7 @@ function get_vac_loop_momenta_list(
 )::Vector{Vector{Basic}}
 ###########################################
 
-  return [ to_Basic( ["q1", "q2", "q1 + q2"] )] 
+  return [ to_Basic( ["q1", "q2", "q1 + q2"] )]
 
 end # function get_vac_loop_momenta_list
 
@@ -69,7 +69,7 @@ function get_vac_loop_momenta_list(
           to_Basic( ["q1", "q2", "q3", "q4",
                      "q1 + q2", "q1 + q3", "q2 + q3", "q2 + q4",
                      "q1 + q2 + q4", "q2 + q3 + q4"] ) ]
-           
+
 end # function get_vac_loop_momenta_list
 
 
@@ -78,7 +78,7 @@ end # function get_vac_loop_momenta_list
 ##############################################
 # den_list: [ Den(...), Den(...), ... ]
 function is_matched_preferred_vac_mom_list(
-    den_list::Vector{Basic}, 
+    den_list::Vector{Basic},
 )::Bool
 ##############################################
 
@@ -118,9 +118,9 @@ end # function is_matched_preferred_vac_mom_list
 
 
 ###################################
-# This function is used for the case before canonicalization, 
+# This function is used for the case before canonicalization,
 #   so we only check the coefficient sign of the leading qi.
-function normalize_loop_mom_single( 
+function normalize_loop_mom_single(
     loop_mom::Basic
 )::Basic
 ###################################
@@ -135,8 +135,8 @@ end # function normalize_loop_mom_single
 
 
 ###################################
-function normalize_loop_mom( 
-    loop_den_list::Vector{Basic} 
+function normalize_loop_mom(
+    loop_den_list::Vector{Basic}
 )::Vector{Basic}
 ###################################
 
@@ -187,19 +187,19 @@ function gen_loop_mom_canon_map(
 
   # default repl_rule
   chosen_repl_rule = Dict{Basic,Basic}()
-  chosen_repl_order = Inf
+  chosen_repl_order = [Inf, Inf]
 
   # find all branches of the loop momenta.
   normalized_mom_list = map( normalize_loop_mom_single, mom_list )
   mom_q_coeff_mat = coefficient_matrix( normalized_mom_list, q_list )
   @assert (isempty∘setdiff)( unique(mom_q_coeff_mat), Basic[-1,0,1] )
   mom_q_coeff_list = (unique∘collect∘eachrow)( mom_q_coeff_mat )
-  sort!( mom_q_coeff_list; 
-          by=coeff_list->begin
-            num_q = (length∘findall)(!iszero,coeff_list)
-            new_coeff_list = map( coeff->subs(coeff,Dict(Basic(-1)=>2,Basic(0)=>3)), coeff_list )
-            num_q, new_coeff_list
-          end )
+  # sort!( mom_q_coeff_list;
+  #         by=coeff_list->begin
+  #           num_q = (length∘findall)(!iszero,coeff_list)
+  #           new_coeff_list = map( coeff->subs(coeff,Dict(Basic(-1)=>2,Basic(0)=>3)), coeff_list )
+  #           num_q, new_coeff_list
+  #         end )
   vac_mom_list = [ sum( mom_q_coeff .* q_list ) for mom_q_coeff ∈ mom_q_coeff_list ]
   branch_mom_indices_list = Vector{Int}[]
   for mom_q_coeff ∈ mom_q_coeff_list
@@ -233,7 +233,7 @@ function gen_loop_mom_canon_map(
         selected_ext_mom_list = map( mom->subs(mom,q_null_dict), normalized_mom_list[collect(selected_mom_indices)] )
         repl_rule = Dict( q_list .=> map( expand, inv_selected_coeff_mat * (sign_list .* q_list .- selected_ext_mom_list) ) )
         new_mom_list = map( mom->(expand∘subs)(mom,repl_rule), normalized_mom_list )
-        map!( normalize_loop_mom_single, new_mom_list, new_mom_list )
+        # map!( normalize_loop_mom_single, new_mom_list, new_mom_list )
         (!isempty∘setdiff)( (unique∘map)( abs, coefficient_matrix( new_mom_list, k_list )),
                               Basic[0,1] ) && continue
 
@@ -243,8 +243,6 @@ function gen_loop_mom_canon_map(
         if repl_order < chosen_repl_order
           chosen_repl_order = repl_order
           chosen_repl_rule = repl_rule
-        # elseif this_repl_order == chosen_repl_order
-          # @warn "Two equivalent replacement rules are found."
         end # if
       end # for selected_mom_indices
     end # for sign_list
@@ -263,30 +261,35 @@ end # function gen_loop_mom_canon_map
 
 
 #########################################################
-# Created by Quan-feng Wu 
+# Created by Quan-feng Wu
 # Mar. 26 2023
-# 
+#
 # A simple trial for sorting the replace rules generated in `gen_loop_mom_canon_map`.
-function get_sort_order( 
-    mom_list::Vector{Basic} 
-)::BigInt
+function get_sort_order(
+    mom_list::Vector{Basic}
+)::Vector{BigInt}
 #########################################################
 
-  tmp_mom_list = unique( abs, mom_list )
-  map!( normalize_loop_mom_single, tmp_mom_list, tmp_mom_list )
+  tmp_mom_list = map( normalize_loop_mom_single, mom_list )
+  unique!( tmp_mom_list )
+  sort!( tmp_mom_list; by=string )
   q_list = get_loop_momenta( tmp_mom_list )
   k_list = get_ext_momenta( tmp_mom_list )
   qk_list = vcat(q_list, k_list)
 
-  order = one(BigInt)
+  order = BigInt[1]
 
-  for (mom_index, mom) ∈ enumerate(tmp_mom_list)
+  for mom ∈ tmp_mom_list
     mom_qk_coeff_mat = coefficient_matrix( [mom], qk_list )
 
     qk_str = (join∘map)( coeff->coeff==-1 ? "2" : string(coeff), mom_qk_coeff_mat )
 
-    order *= parse(BigInt, reverse(qk_str), base=3)
+    order[1] *= parse(BigInt, reverse(qk_str), base=3)
   end # for (mom_index, mom)
+
+  push!( order, parse( BigInt,
+                        (bytes2hex∘sha256)( "[" * join( tmp_mom_list, ", " ) * "]" );
+                        base=16 ) )
 
   return order
 end # function get_sort_order
@@ -297,11 +300,10 @@ end # function get_sort_order
 
 
 #####################################################
-function canonicalize_amp( 
-    loop_den_list::Vector{Basic},  
+function canonicalize_amp(
+    loop_den_list::Vector{Basic},
     amp_lorentz_list::Vector{Basic}
-    # mom_list_collect::Vector{Vector{Basic}}=Vector{Basic}[]
-)::Tuple{Vector{Basic},Vector{Basic}}
+)::Tuple{Vector{Basic},Vector{Basic},Dict{Basic,Basic}}
 ######################################################
 
   # n_loop = get_n_loop( loop_den_list )
@@ -309,7 +311,7 @@ function canonicalize_amp(
   # k_list = get_ext_momenta( loop_den_list )
   n_loop = isempty(q_list) ? 0 : (get_loop_index∘last)( q_list )
 
-  n_loop == 0 && return loop_den_list, amp_lorentz_list 
+  n_loop == 0 && return loop_den_list, amp_lorentz_list
 
   mom_list = map( first∘get_args, loop_den_list )
   canon_map = gen_loop_mom_canon_map( mom_list )
@@ -326,7 +328,7 @@ function canonicalize_amp(
   @assert all( ≥(0), unique_coeff_list ) "$new_mom_list"
   # CHECK end
 
-  return new_loop_den_list, new_amp_lorentz_list 
+  return new_loop_den_list, new_amp_lorentz_list, canon_map
 
 end # function canonicalize_amp
 
