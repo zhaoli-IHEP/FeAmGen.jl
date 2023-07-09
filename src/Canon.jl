@@ -311,7 +311,7 @@ function canonicalize_amp(
   # k_list = get_ext_momenta( loop_den_list )
   n_loop = isempty(q_list) ? 0 : (get_loop_index∘last)( q_list )
 
-  n_loop == 0 && return loop_den_list, amp_lorentz_list
+  n_loop == 0 && return loop_den_list, amp_lorentz_list, Dict{Basic,Basic}()
 
   mom_list = map( first∘get_args, loop_den_list )
   canon_map = gen_loop_mom_canon_map( mom_list )
