@@ -1,9 +1,9 @@
 [FeAmGen]
-git-tree-sha1 = "1e24e9cb6bee7715ed0091d3575c14ad43a77143"
+git-tree-sha1 = "fd52b7e8a49d815772456cac19a90303c9ec0517"
 
     [[FeAmGen.download]]
     url = "https://code.ihep.ac.cn/IHEP-Multiloop/FeAmGen_artifacts/-/raw/main/utils.tar.bz2"
-    sha256 = "8800c2beb8a1b01707e030eaf7c1cf37ff7b7ce6c532cdc55943db11efa53d99"
+    sha256 = "44d23c7c6120383c4c5cce7cc64faeeb1de1405de095a5c6f04666d97de10085"
 
 
 [QGRAF]
