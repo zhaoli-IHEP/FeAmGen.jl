@@ -521,6 +521,11 @@ function construct_den_topology(
         shifted_jld_file["amp_lorentz_list"] = to_String( amp_list )
         shifted_jld_file["loop_den_list"] = to_String( den_list )
       end # shifted_jld_file
+    else
+      den_list = normalize_loop_mom( den_list )
+      dentop = DenTop( n_loop, indep_ext_mom, den_list )
+      push!( backup_dentop_collect, dentop )
+      push!( dentop_collect, dentop )
     end # if
 
     close( jld_file )

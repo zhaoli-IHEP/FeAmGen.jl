@@ -228,13 +228,13 @@ function find_AC_pair_pos( part_list::Vector{Particle} )::Union{Tuple{Nothing,No
 ############################################################################
 
   first_AC_pos = findfirst( p_ -> is_anticommuting(p_), part_list )
-  if first_AC_pos == nothing
+  if isnothing(first_AC_pos)
     return nothing, nothing
   end # if
 
   first_AC_pos = first( first_AC_pos )
   second_AC_pos = findnext( p_ -> is_anticommuting(p_), part_list, first_AC_pos+1 )
-  @assert second_AC_pos != nothing
+  @assert !isnothing(second_AC_pos)
   second_AC_pos = first( second_AC_pos )
 
   return first_AC_pos, second_AC_pos
@@ -253,7 +253,7 @@ function generate_ordered_link_list( part_list::Vector{Particle} )::Vector{Parti
   first_AC_pos, second_AC_pos = find_AC_pair_pos( part_list )
 
   clone_link_list = copy( part_list )
-  if first_AC_pos != nothing && second_AC_pos != nothing
+  if !isnothing(first_AC_pos) && !isnothing(second_AC_pos)
     first_AC_part = clone_link_list[first_AC_pos]
     @assert first_AC_pos < second_AC_pos
     if first_AC_part.kf > 0 
@@ -315,7 +315,7 @@ function generate_QGRAF_model( model::Model )::Nothing
     part_list_str = join( part_name_list, "," )
 
     n_link = length(inter.link_list)
-    if n_link > 2 
+    if n_link > 2
       base_vertex_str = "[$(part_list_str); epow='$(inter.QED_order)',gspow='$(inter.QCD_order)',spc='$(inter.SPC_order)',qcdct='0']\n"
       write( file, base_vertex_str )
     end # if

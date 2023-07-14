@@ -165,16 +165,13 @@ function get_interaction(
 )::Tuple{Interaction,Int64}
 ########################################################################
 
-  # QCDct_link_name_list = filter( s_ -> s_ in ["QCDct1","QCDct2"], field_name_list )
-  # QCDct_order = length( QCDct_link_name_list )
   QCDct_order = begin
-    QCDct_link_name_list = filter( s_->startswith(s_,"QCDct")&&(!endswith(s_,"bar")), field_name_list )
-    @assert all( s_->(!isnothing∘findfirst)(r"^QCDct[1-9]\d*$",s_), QCDct_link_name_list )
+    QCDct_link_name_list = filter( contains(r"^QCDct[1-9]\d*$"), field_name_list )
     isempty(QCDct_link_name_list) ? 0 : sum( s_->parse(Int,match(r"[1-9]\d*",s_).match), QCDct_link_name_list )
   end # QCDct_order
 
   # normal_link_name_list = filter( s_ -> (s_ in ["QCDct1","QCDct2"]) == false, field_name_list )
-  normal_link_name_list = filter( !contains("QCDct"), field_name_list )
+  normal_link_name_list = filter( !contains(r"^QCDct[1-9]\d*(bar)?$"), field_name_list )
   normal_link_kf_list = map( s_ -> model.particle_name_dict[s_].kf, normal_link_name_list )
   sorted_normal_link_kf_list = sort( normal_link_kf_list )
   inter = model.sorted_kf_list_dict[sorted_normal_link_kf_list]
@@ -212,7 +209,7 @@ function get_incoming_couplings_lorentz_list(
   elseif part.spin == :scalar
     return [ Basic("1") ]
   else
-    @assert false "We should have not considered ghost in external field."
+    throw( "We should have not considered ghost in external field." )
   end # if
 
 end # function get_incoming_couplings_lorentz_list
@@ -250,7 +247,7 @@ function get_outgoing_couplings_lorentz_list(
   elseif part.spin == :scalar
     return [ Basic("1") ]
   else
-    error( "We should have not considered ghost in external field.\n" )
+    throw( "We should have not considered ghost in external field." )
   end # if
 
 end # function get_outgoing_couplings_lorentz_list
@@ -289,7 +286,7 @@ function get_remnant_couplings_lorentz_list(
   elseif part.spin in [:scalar, :ghost]
     return [ Basic(" I*Den( $momentum, $(part.mass), $(part.width) ) ") ]
   else
-    error( "We should have not considered ghost in external field.\n" )
+    throw( "Unsupported for $(part.spin)." )
   end # if
 
 end # function get_remnant_couplings_lorentz_list
@@ -316,7 +313,7 @@ function edge_from_link_index(
 
   propagator_index = get_node_index_prop( g, vert_id, :propagator_index_list )[link_index]
   the_edge_pos = findfirst( e_ -> e_.property[:propagator_index] == propagator_index, g.edge_list )
-  @assert the_edge_pos != nothing
+  @assert !isnothing(the_edge_pos)
 
   return g.edge_list[the_edge_pos]
 
@@ -899,7 +896,7 @@ function convert_qgraf_TO_Graph(
   true_remnant_propagators = Dict{Any,Any}[]
   if !isnothing( one_qgraf["remnant_propagators"] )
     qgraf_remnant_propagators = one_qgraf["remnant_propagators"]
-    true_remnant_propagators::Array{Dict{Any,Any},1} = filter( rem_ -> (rem_["field"] in ["QCDct1","QCDct2"]) == false, qgraf_remnant_propagators )
+    true_remnant_propagators::Array{Dict{Any,Any},1} = filter( rem_ -> rem_["field"] ∉ ["QCDct1","QCDct2"], qgraf_remnant_propagators )
   end # if
   # Add internal and loop propagators.
   for one_rem in true_remnant_propagators
