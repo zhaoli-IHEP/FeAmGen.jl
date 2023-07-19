@@ -439,7 +439,7 @@ function construct_den_topology(
 
     root_dir,
       joinpath( root_dir, replace( amp_name, "_amplitudes" => "_shifted_amplitudes" ) ),
-      joinpath( root_dir, replace( amp_name, "_amplitudes" => mom_shift_opt ? "_shifted_topology" : "_topology" ) )
+      joinpath( root_dir, replace( amp_name, "_amplitudes" => mom_shift_opt ? "_shifted_topologies" : "_topologies" ) )
   end # topology_dir
   mom_shift_opt && bk_mkdir( shifted_amp_dir )
   bk_mkdir( topology_dir )
@@ -579,7 +579,7 @@ function construct_den_topology(
       end # for shifted_amp_file
     end # if mom_shift_opt
 
-    jldopen( joinpath( topology_dir, "topology$(numbering).jld2" ), "w" ) do topology_file
+    jldopen( joinpath( topology_dir, mom_shift_opt ? "shifted_topology$(numbering).jld2" : "topology$(numbering).jld2" ), "w" ) do topology_file
       topology_file["n_loop"] = complete_dentop.n_loop
       topology_file["indep_ext_mom"] = to_String( complete_dentop.indep_ext_mom )
       topology_file["den_list"] = to_String( complete_dentop.den_list )
