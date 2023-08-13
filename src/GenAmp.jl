@@ -65,6 +65,7 @@ function generate_amp( proc_file::String; model_paths=[pwd()] )::Nothing
 
 end # function generate_amp
 
+generate_amp( yaml_list::Vector{String} ) = map( generate_amp, yaml_list )
 
 
 
