@@ -908,7 +908,7 @@ function convert_qgraf_TO_Graph(
 
     momentum = sign(field_part.kf)*Basic(one_rem["momentum"])
 
-    style_str = findfirst("q",one_rem["momentum"]) == nothing ? "Internal" : "Loop"
+    style_str = (isnothing∘findfirst)("q",one_rem["momentum"]) ? "Internal" : "Loop"
 
     id_color_dict = Dict( :triplet => [ Basic(" DeltaFun(clb$mark,cla$mark) ") ],
                           :octet   => [ Basic(" DeltaAdj(clb$mark,cla$mark) ") ],
