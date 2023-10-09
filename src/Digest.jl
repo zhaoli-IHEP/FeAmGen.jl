@@ -73,7 +73,7 @@ function calculate_CTcoeff(
 ############################################################################
 
   local CTcoeff = Basic(" (1+dZgx1*CTorder+dZgx2*CTorder^2)^$QCD_order ")
-  if has_yt == true 
+  if has_yt
     CTcoeff *= Basic(" 1+dZmtx1*CTorder+dZmtx2*CTorder^2 ")
   end # if
 
@@ -159,17 +159,17 @@ function generate_color_lorentz_couplings(
   if is_massless_quark(part) 
     lorentz_col_list = [ Basic("Gamma(-1,1,2)*P(-1,1)") ]
     couplings_matrix = zeros(Basic,1,1)
-    couplings_matrix[1,1] = Basic("(-I)*( dZ2x1*CTorder+dZ2x2*CTorder^2 )")
+    couplings_matrix[1,1] = Basic("I*( dZ2x1*CTorder+dZ2x2*CTorder^2 )")
   elseif is_top_quark(part)
     lorentz_col_list = [ Basic("Gamma(-1,1,2)*P(-1,1)"), Basic("Identity(2,1)") ]
     couplings_matrix = zeros(Basic,1,2)
     couplings_matrix[1,1] = Basic("I*( dZ2tx1*CTorder+dZ2tx2*CTorder^2 )")
-    couplings_matrix[1,2] = Basic("(-I)*$(mass_str)*( (dZ2tx1+dZmtx1)*CTorder+(dZ2tx1*dZmtx1+dZ2tx2+dZmtx2)*CTorder^2 )")
+    couplings_matrix[1,2] = Basic("(-I)*($(mass_str))*( (dZ2tx1+dZmtx1)*CTorder+(dZ2tx1*dZmtx1+dZ2tx2+dZmtx2)*CTorder^2 )")
   elseif is_gluon(part)
     lorentz_col_list = [ Basic("P(1,1)*P(2,1)"), Basic("Metric(1,2)*P(-1,1)*P(-1,1)") ]
     couplings_matrix = zeros(Basic,1,2)
-    couplings_matrix[1,1] = Basic("I*( dZ3x1*CTorder+dZ3x2*CTorder^2 )")
-    couplings_matrix[1,2] = Basic("(-I)*( dZ3x1*CTorder+dZ3x2*CTorder^2 )")
+    couplings_matrix[1,1] = Basic("(-I)*( dZ3x1*CTorder+dZ3x2*CTorder^2 )")
+    couplings_matrix[1,2] = Basic("I*( dZ3x1*CTorder+dZ3x2*CTorder^2 )")
   elseif is_ghost(part)
     lorentz_col_list = [ Basic("P(-1,1)*P(-1,1)") ]
     couplings_matrix = zeros(Basic,1,1)

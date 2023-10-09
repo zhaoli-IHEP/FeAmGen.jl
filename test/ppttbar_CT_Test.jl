@@ -1,12 +1,12 @@
-using Dates, FeAmGen, FeynUtils 
+using Dates, FeAmGen
 
-@info "ggttbar_Test starts @ $(now())"
+@info "ppttbar_CT_Test starts @ $(now())"
 
 
 #----------------------------------------------------------------------------
-# gg->ttbar 0-loop, 1-loop tests
+# gg->ttbar with counter terms
 #----------------------------------------------------------------------------
-generic_ggttbar_seed_proc_yaml_str( ; nloop::Int64 = 2::Int64 ) = """
+generic_ppttbar_seed_proc_yaml_str( ; n_loop::Int64=2, CT_order::Int64=0 ) = """
 # input file for calculation details
 # model related information
 
@@ -32,19 +32,19 @@ DropTadpole: true              # drop tadpole?
 DropWFcorrection: true         # drop WFcorrection?
 
 # number of loops
-n_loop: $(nloop)
+n_loop: $(n_loop - CT_order)
 # order of QCD counter-term vertices
-QCDCT_order: 0   
+QCDCT_order: $(CT_order)
 
 # order of QCD coupling gs in the amplitude
-Amp_QCD_order: $(2+2*nloop) 
+Amp_QCD_order: $(2 + 2*n_loop) 
 # order of QED coupling ee in the amplitude
 Amp_QED_order: 0  
 # order of special coupling in the amplitude
 Amp_SPC_order: 0  
 
 # min ep power in the amplitude
-Amp_Min_Ep_Xpt: $(-2*nloop)
+Amp_Min_Ep_Xpt: $(-2*n_loop)
 # max ep power in the amplitude
 Amp_Max_Ep_Xpt: 0
 
@@ -61,21 +61,21 @@ color_symmetry: []
 
 #-------------------------------------------
 # Start running
-for nloop in [0,1]
+n_loop = 2
+CT_order = 1
 
-  open( "seed_ggttbar_proc_$(nloop)Loop.yaml", "w" ) do infile
-    write( infile, generic_ggttbar_seed_proc_yaml_str(nloop=nloop) )
-  end # close
+write( 
+  "seed_ppttbar_proc_$(n_loop)Loop_with_$(CT_order)CT.yaml",
+  generic_ppttbar_seed_proc_yaml_str(n_loop=n_loop, CT_order=CT_order)
+) # write
 
-  card_list = digest_seed_proc( "seed_ggttbar_proc_$(nloop)Loop.yaml" )
-  @assert "parton_parton_TO_t_tbar_$(nloop)Loop/g_g_TO_t_tbar.yaml" in card_list
+card_list = digest_seed_proc( "seed_ppttbar_proc_$(n_loop)Loop_with_$(CT_order)CT.yaml" )
+filter!( contains("g_g_TO_t_tbar.yaml"), card_list )
+@assert !isempty(card_list)
   
-  # we only test the gluon fusion subprocess
-  generate_amp( "parton_parton_TO_t_tbar_$(nloop)Loop/g_g_TO_t_tbar.yaml" )
+# we only test the gluon fusion subprocess
+generate_amp.( card_list )
 
-end # for nloop
-
-
-@info "ggttbar_Test ends @ $(now())"
+@info "ppttbar_Test ends @ $(now())"
 
 
