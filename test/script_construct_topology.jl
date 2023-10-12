@@ -12,6 +12,6 @@ proc_dir = joinpath( rootdir, proc_str )
 amp_dir = joinpath( proc_dir, "$(proc_str)_amplitudes" )
 
 @assert isdir(amp_dir)
-FeAmGen.construct_den_topology( amp_dir, mom_shift_opt = true )
+construct_den_topology( amp_dir, mom_shift_opt = true )
 
 
