@@ -178,10 +178,14 @@ function gen_loop_mom_canon_map(
 #########################################################
 
   # get information
-  q_list = get_loop_momenta( mom_list )
+  tmp_q_list = get_loop_momenta( mom_list )
   k_list = get_ext_momenta( mom_list )
-  n_loop = isempty(q_list) ? 0 : (get_loop_index∘last)( q_list )
-  @assert q_list == [Basic("q$ii") for ii ∈ 1:n_loop]
+  n_loop = isempty(tmp_q_list) ? 0 : (get_loop_index∘last)( tmp_q_list )
+  q_list = [ Basic("q$ii") for ii ∈ 1:n_loop ]
+  diff_q_list = setdiff( q_list, tmp_q_list )
+  !isempty(diff_q_list) && @warn """
+  Add $(join(diff_q_list, ", ")) to the loop momenta list.
+  """
   q_null_dict = Dict( q_list .=> zero(Basic) )
   preferred_flag = n_loop ∈ keys(preferred_vac_mom_dict())
 

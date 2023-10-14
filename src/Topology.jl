@@ -352,11 +352,15 @@ function find_mom_shift(
   @funs Den
 
   # get information
-  q_list = get_loop_momenta( den_list )
+  tmp_q_list = get_loop_momenta( den_list )
   k_list = get_ext_momenta( den_list )
-  n_loop = isempty(q_list) ? 0 : (get_loop_index∘last)( q_list )
+  n_loop = isempty(tmp_q_list) ? 0 : (get_loop_index∘last)( tmp_q_list )
   preffered_vac_mom_lists = preferred_vac_mom_dict()[n_loop]
-  @assert q_list == [ Basic("q$ii") for ii ∈ 1:n_loop ]
+  q_list = [ Basic("q$ii") for ii ∈ 1:n_loop ]
+  diff_q_list = setdiff(q_list, tmp_q_list)
+  !isempty(diff_q_list) && @warn """
+  Add $(join(diff_q_list, ", ")) to the loop momenta list.
+  """
   q_null_dict = Dict( q_list .=> zero(Basic) )
 
   # find all branches of the loop momenta.
