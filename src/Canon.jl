@@ -217,7 +217,8 @@ function gen_loop_mom_canon_map(
       # check invertible q coeff matrix
       selected_vac_mom_list = vac_mom_list[ selected_branch ]
       selected_coeff_mat = coefficient_matrix( selected_vac_mom_list, q_list )
-      (iszero∘expand∘get_det)( selected_coeff_mat ) && break
+      !iszero((abs∘expand∘get_det)(selected_coeff_mat) - 1) && break
+
       inv_selected_coeff_mat = inv( selected_coeff_mat )
 
       # check q signs are all positive or all negative
