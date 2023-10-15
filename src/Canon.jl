@@ -312,18 +312,35 @@ function canonicalize_amp(
 ######################################################
 
   # n_loop = get_n_loop( loop_den_list )
-  q_list = get_loop_momenta( loop_den_list )
+  original_q_list = get_loop_momenta( loop_den_list )
   # k_list = get_ext_momenta( loop_den_list )
-  n_loop = isempty(q_list) ? 0 : (get_loop_index∘last)( q_list )
-
+  n_loop = length( original_q_list )
+  # n_loop = isempty(q_list) ? 0 : (get_loop_index∘last)( q_list )
   n_loop == 0 && return loop_den_list, amp_lorentz_list, Dict{Basic,Basic}()
+  q_list = [ Basic("q$ii") for ii ∈ 1:n_loop ]
 
-  mom_list = map( first∘get_args, loop_den_list )
+  tmp_repl_dict = Dict( original_q_list .=> q_list )
+  inv_tmp_repl_dict = Dict( q_list .=> original_q_list )
+
+  new_loop_den_list = map( den->subs(den,tmp_repl_dict), loop_den_list )
+  new_amp_lorentz_list = map( amp->subs(amp,tmp_repl_dict), amp_lorentz_list )
+
+  mom_list = map( first∘get_args, new_loop_den_list )
   canon_map = gen_loop_mom_canon_map( mom_list )
 
-  new_loop_den_list = map( den->subs(den,canon_map), loop_den_list )
+  new_loop_den_list = map( den->subs(den,canon_map), new_loop_den_list )
   new_loop_den_list = normalize_loop_mom( new_loop_den_list )
-  new_amp_lorentz_list = map( amp->subs(amp,canon_map), amp_lorentz_list )
+  new_amp_lorentz_list = map( amp->subs(amp,canon_map), new_amp_lorentz_list )
+
+  final_canon_map = Dict{Basic,Basic}()
+  for (key, value) ∈ canon_map
+    final_canon_map[ inv_tmp_repl_dict[key] ] = value
+  end # for (key, value)
+  for (key, value) ∈ tmp_repl_dict
+    haskey(final_canon_map, key) && continue
+    key == value && continue
+    final_canon_map[key] = value
+  end
 
   new_mom_list = map( first∘get_args, new_loop_den_list )
 
@@ -333,8 +350,7 @@ function canonicalize_amp(
   @assert all( ≥(0), unique_coeff_list ) "$new_mom_list"
   # CHECK end
 
-  return new_loop_den_list, new_amp_lorentz_list, canon_map
-
+  return new_loop_den_list, new_amp_lorentz_list, final_canon_map
 end # function canonicalize_amp
 
 
