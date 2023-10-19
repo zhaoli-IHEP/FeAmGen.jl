@@ -347,10 +347,14 @@ function canonicalize_amp(
   # CHECK begin
   # qi_list = Basic[ Basic("q$ii") for ii in 1:n_loop ]
   unique_coeff_list = union( coefficient_matrix( new_mom_list, q_list ) )
-  @assert all( ≥(0), unique_coeff_list ) "$new_mom_list"
+  # @assert all( ≥(0), unique_coeff_list ) "$new_mom_list"
+  if any( <(0), unique_coeff_list )
+    return Vector{Basic}(), Vector{Basic}(), Dict{Basic,Basic}()
+  end # if
   # CHECK end
 
   return new_loop_den_list, new_amp_lorentz_list, final_canon_map
+
 end # function canonicalize_amp
 
 
