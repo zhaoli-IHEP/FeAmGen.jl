@@ -13,6 +13,6 @@ include("ppttbar_Test.jl")
 
 include("tWtW_Test.jl")
 
-include("ggttbar_CT_Test.jl")
+include("ppttbar_CT_Test.jl")
 
-include("test_construct_topology.jl")
+include("script_construct_topology.jl")
