@@ -1,41 +1,55 @@
 # *FeAmGen.jl*: A julia program for **Fe**ynman **Am**plitude **Gen**eration
 
-## Requirement
+## Requirements
 
-*FeAmGen.jl* needs following external programs. All of them could be installed via Julia Yggdrasil and JLL dependencies.
+*FeAmGen.jl* needs following external programs:
 
-1. FORM: [main page](https://www.nikhef.nl/~form/) and [GitHub](https://github.com/vermaseren/form);
-2. Nauty: [main page](https://pallini.di.uniroma1.it);
-3. QGRAF: [main page](http://cfif.ist.utl.pt/~paulo/qgraf.html). It cannot be installed via Julia Yggdrasil project because of its license. We provide, however, an automated compilition for it in our program. The users should accept the agreement of its license before using this package.
+1. FORM: [main page](https://www.nikhef.nl/~form/) and [GitHub](https://github.com/vermaseren/form).
+  It can be installed via the [Julia Yggdrasil project](https://github.com/JuliaPackaging/Yggdrasil/) automatically as a dependency [FORM_jll.jl](https://github.com/JuliaBinaryWrappers/FORM_jll.jl);
+2. Nauty: [main page](https://pallini.di.uniroma1.it).
+  It can be installed via the [Julia Yggdrasil project](https://github.com/JuliaPackaging/Yggdrasil/) automatically as a dependency [nauty_jll.jl](https://github.com/JuliaBinaryWrappers/nauty_jll.jl);
+3. QGRAF: [main page](http://cfif.ist.utl.pt/~paulo/qgraf.html).
+  It cannot be installed via the [Julia Yggdrasil project](https://github.com/JuliaPackaging/Yggdrasil/) because of its license, see this [PR](https://github.com/JuliaPackaging/Yggdrasil/pull/6284) for more information.
+  We provide, however, an automated compilition for it in our program, which requires a Fortran compiler  (`gfortran` as default).
+  If the user wants to use other Fortran compiler, please add environment variable `ENV["FC"] = "/path/to/Fortran/compiler` in the Julia startup file (`~/.julia/config/startup.jl` as default, see this [url](https://docs.julialang.org/en/v1/manual/command-line-interface/#Startup-file) for more information).
+  If the user have already installed QGRAF and want to use it, please add environment variable `ENV["QGRAF"] = "/path/to/QGRAF"` in the Julia startup file.
+  The users should accept the agreement of its license (see the heads of its main source code file) before using this package.
 
 ## Installation
 
 1. Please add the [IHEP-Multiloop Julia registry](https://code.ihep.ac.cn/IHEP-Multiloop/JuliaRegistry.git) via
-
 ```julia
 import Pkg
 Pkg.Registry.add(
   Pkg.RegistrySpec(url="https://code.ihep.ac.cn/IHEP-Multiloop/JuliaRegistry.git")
 )
 ```
-
 or in the Julia REPL via
-
 ```julia-repl
 ]registry add https://code.ihep.ac.cn/IHEP-Multiloop/JuliaRegistry.git
 ```
 
 2. Install `FeAmGen.jl` via
-
 ```julia
 import Pkg
 Pkg.add("FeAmGen")
 ```
-
 or in the Julia REPL via
-
 ```julia-repl
 ]add FeAmGen
+```
+
+3. The possible problems during the installation is `PyCall.jl` and `Conda.jl` need to be built.
+  Please run the following commands to build them.
+```julia
+import Pkg
+Pkg.build("Conda")
+Pkg.build("PyCall")
+```
+or in the Julia REPL as
+```julia-repl
+]build Conda
+]build PyCall
 ```
 
 ## Usage
