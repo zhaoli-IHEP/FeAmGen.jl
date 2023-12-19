@@ -30,6 +30,7 @@ export generate_amp
 # Extra important functionals
 export canonicalize_amp
 export is_planar
+export to_m_file
 
 include("Universe.jl")
 include("Graph.jl")
@@ -42,6 +43,7 @@ include("Kin.jl")
 include("QGRAF.jl")
 include("Seed.jl")
 include("SimpleDigest.jl")
+include("ToMathematicaForm.jl")
 include("Topology.jl")
 include("Visual.jl")
 
