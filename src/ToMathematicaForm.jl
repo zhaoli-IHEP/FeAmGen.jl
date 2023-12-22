@@ -55,21 +55,28 @@ function to_m_file(amp_file::String, m_file::Union{Missing, String}=missing)::No
         write(io,
             "kinRelation = {" * join(
                 ["$key -> $value" for (key, value) ∈ kin_relation], ", "
-            ) * ";\n"
+            ) * "};\n"
         )
         write(io, "\n")
-        write(io, "momSymmetry = $mom_symmetry;\n")
-        write(io, "colorSymmetry = $color_symmetry;\n")
+        write(io,
+            "momSymmetry = {" * join(
+                ["$key -> $value" for (key, value) ∈ mom_symmetry], ", "
+            ) * "};\n"
+        )
+        write(io, "colorSymmetry = {" * join(
+                ["$key -> $value" for (key, value) ∈ color_symmetry], ", "
+            ) * "};\n"
+        )
         write(io, "\n")
         write(io,
             "modelCouplingDict = {" * join(
                 ["$key -> $value" for (key, value) ∈ model_coupling_dict], ", "
-            ) * ";\n"
+            ) * "};\n"
         )
         write(io,
             "modelParameterDict = {" * join(
                 ["$key -> $value" for (key, value) ∈ model_parameter_dict], ", "
-            ) * ";\n"
+            ) * "};\n"
         )
     end
 
