@@ -4,7 +4,7 @@
 # https://opensource.org/licenses/MIT
 
 function to_m_file(amp_file::String, m_file::Union{Missing, String}=missing)::Nothing
-    @assert isfile(amp_file) "Please check the file path of $amp_file!"
+    @assert isfile(amp_file) "Please check the file path of $(amp_file)!"
     amp_jld = jldopen(amp_file, "r")
     mma_file = !ismissing(m_file) ? m_file : begin
         filename, _ = splitext(amp_file)

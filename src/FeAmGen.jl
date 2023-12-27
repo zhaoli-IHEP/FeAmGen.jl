@@ -29,6 +29,7 @@ export generate_amp
 
 # Extra important functionals
 export canonicalize_amp
+export find_fermion_loops
 export is_planar
 export to_m_file
 
@@ -46,6 +47,7 @@ include("SimpleDigest.jl")
 include("ToMathematicaForm.jl")
 include("Topology.jl")
 include("Visual.jl")
+include("Utils.jl")
 
 
 ###################
