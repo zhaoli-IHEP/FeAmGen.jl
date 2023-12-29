@@ -44,40 +44,42 @@ function to_m_file(amp_file::String, m_file::Union{Missing, String}=missing)::No
     end
 
     open(mma_file, "w+") do io
-        write(io, "ampColorList = {" * join(amp_color_list, ", ") * "};\n")
-        write(io, "ampLorentzList = {" * join(amp_lorentz_list, ", ") * "};\n")
+        write(io, "{\n")
+        write(io, "ampColorList -> {" * join(amp_color_list, ", ") * "},\n")
+        write(io, "ampLorentzList -> {" * join(amp_lorentz_list, ", ") * "},\n")
         write(io, "\n")
-        write(io, "loopDenList = {" * join(loop_den_list, ", ") * "};\n")
-        write(io, "loopDenXptList = {" * join(loop_den_xpt_list, ", ") * "};\n")
+        write(io, "loopDenList -> {" * join(loop_den_list, ", ") * "},\n")
+        write(io, "loopDenXptList -> {" * join(loop_den_xpt_list, ", ") * "},\n")
         write(io, "\n")
-        write(io, "signedSymmetryFactor = $signed_symmetry_factor;\n")
+        write(io, "signedSymmetryFactor -> $signed_symmetry_factor;\n")
         write(io, "\n")
         write(io,
-            "kinRelation = {" * join(
+            "kinRelation -> {" * join(
                 ["$key -> $value" for (key, value) ∈ kin_relation], ", "
-            ) * "};\n"
+            ) * "},\n"
         )
         write(io, "\n")
         write(io,
-            "momSymmetry = {" * join(
+            "momSymmetry -> {" * join(
                 ["$key -> $value" for (key, value) ∈ mom_symmetry], ", "
-            ) * "};\n"
+            ) * "},\n"
         )
-        write(io, "colorSymmetry = {" * join(
+        write(io, "colorSymmetry -> {" * join(
                 ["$key -> $value" for (key, value) ∈ color_symmetry], ", "
-            ) * "};\n"
+            ) * "},\n"
         )
         write(io, "\n")
         write(io,
-            "modelCouplingDict = {" * join(
+            "modelCouplingDict -> {" * join(
                 ["$key -> $value" for (key, value) ∈ model_coupling_dict], ", "
-            ) * "};\n"
+            ) * "},\n"
         )
         write(io,
-            "modelParameterDict = {" * join(
+            "modelParameterDict -> {" * join(
                 ["$key -> $value" for (key, value) ∈ model_parameter_dict], ", "
-            ) * "};\n"
+            ) * "},\n"
         )
+        write(io, "}\n")
     end
 
     return nothing
