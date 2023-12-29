@@ -77,7 +77,7 @@ function to_m_file(amp_file::String, m_file::Union{Missing, String}=missing)::No
         write(io,
             "modelParameterDict -> {" * join(
                 ["$key -> $value" for (key, value) ∈ model_parameter_dict], ", "
-            ) * "},\n"
+            ) * "}\n"
         )
         write(io, "}\n")
     end
