@@ -11,7 +11,6 @@ using AbstractAlgebra
 using FeynUtils
 using Combinatorics
 using Dates
-using FORM_jll
 using JLD2
 using nauty_jll
 using OrderedCollections
@@ -21,6 +20,8 @@ using PyCall
 using SHA
 using SymEngine
 using YAML
+
+import FORM_jll
 
 # Main APIs
 export construct_den_topology

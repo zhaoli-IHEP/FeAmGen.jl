@@ -24,6 +24,19 @@ function check_FC(FC::String="gfortran")::Tuple{Bool,String}
     return false, ""
 end # function check_FC
 
+function check_form()::Tuple{Bool,String}
+    if haskey( ENV, "FORM" ) && isfile( ENV["FORM"] )
+        return true, ENV["FORM"]
+    end # if
+    return false, ""
+end # function check_form
+
+function form()
+    form_flag, form_path = check_form()
+    form_flag && return `$form_path`
+    return FORM_jll.form()
+end
+
 function build_qgraf(FC::String="gfortran")::String
     FC_flag, FC_path = check_FC(FC)
     @assert FC_flag "$FC not found."
@@ -33,6 +46,14 @@ function build_qgraf(FC::String="gfortran")::String
     
     qgraf_source = (first∘filter)( endswith(".f08"), readdir(Pkg.artifact"QGRAF"; join=true) )
     fmodules_dir = (mkdir∘joinpath)( mktempdir(), "fmodules" )
+
+    main_file = (first ∘ filter)( startswith("main"), qgraf_source )
+    license_header = readlines( joinpath( Pkg.dir("QGRAF"), main_file ) )[begin:93]
+    printstyled( "Before building QGRAF, please read the following license:\n", color=:yellow)
+    println( join(license_header, "\n") )
+    printstyled( "If you agree with the license, please type \"yes\" to continue: ", color=:yellow )
+    readline() ∈ ["yes", "YES", "Y", "y", "Yes"] || error("You must agree with the license to continue.")
+
     run(`$(FC_path) -o $(qgraf_installed_path) -Os -J $(fmodules_dir) $(qgraf_source)`)
 
     return joinpath( qgraf_installed_path )
