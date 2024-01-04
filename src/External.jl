@@ -31,10 +31,23 @@ function check_form()::Tuple{Bool,String}
     return false, ""
 end # function check_form
 
+function check_tform()::Tuple{Bool,String}
+    if haskey( ENV, "TFORM" ) && isfile( ENV["TFORM"] )
+        return true, ENV["TFORM"]
+    end # if
+    return false, ""
+end # function check_tform
+
 function form()
     form_flag, form_path = check_form()
     form_flag && return `$form_path`
     return FORM_jll.form()
+end
+
+function tform()
+    tform_flag, tform_path = check_tform()
+    tform_flag && return `$tform_path`
+    return FORM_jll.tform()
 end
 
 function build_qgraf(FC::String="gfortran")::String
