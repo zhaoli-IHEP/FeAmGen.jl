@@ -349,10 +349,10 @@ end # function generate_QGRAF_model
 
 Write out model file that contains more detail.
 """
-function logging_model( model::Model )::Nothing
+function logging_model( model::Model; dir::String=pwd() )::Nothing
 ################################################
 
-  file = open( model.name*".log", "w" )
+  file = open( joinpath( dir, model.name*".log" ), "w" )
 
   write( file, "\n"*"-"^60*"\nAll particles: \n"*"-"^60*"\n" )
   for part in model.particle_list

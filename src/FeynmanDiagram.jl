@@ -1278,7 +1278,7 @@ end # function simplify_color_factors
         color_symmetry::Dict{Int64,Int64},
         min_ep_xpt::Int64,
         max_ep_xpt::Int64,
-        proc_str::String )::Nothing
+        amp_dir::String )::Nothing
 
 Write out the amplitude information into the file that can be read easily.
 """
@@ -1303,14 +1303,13 @@ function write_out_amplitude(
     color_symmetry::Dict{Int64,Int64},
     min_ep_xpt::Int64,
     max_ep_xpt::Int64,
-    proc_str::String;
-    dir::String=pwd()
+    amp_dir::String
 )::Nothing
 ###############################################################################################
 
 
   printstyled( "\n[ Generate amp$(graph_index).out ]\n", color=:green )
-  amp_file = open( joinpath( dir, "$(proc_str)_amplitudes" ,"amp$(graph_index).out" ), "w" )
+  amp_file = open( joinpath( amp_dir ,"amp$(graph_index).out" ), "w+" )
   write( amp_file, """
     n_loop: $(n_loop)
     couplingfactor: $(couplingfactor)
@@ -1393,13 +1392,8 @@ function write_out_amplitude(
 
   close( amp_file )
 
-  if isfile( "$(proc_str)_amplitudes/amp$(graph_index).jld2" )
-    rm( "$(proc_str)_amplitudes/amp$(graph_index).jld2" )
-  end # if
-
-
-
-  amp_jld2_file = joinpath( dir, "$(proc_str)_amplitudes" ,"amp$(graph_index).jld2" )
+  amp_jld2_file = joinpath( amp_dir ,"amp$(graph_index).jld2" )
+  ispath( amp_jld2_file ) && rm( amp_jld2_file; force=true, recursive=true )
   jldopen( amp_jld2_file, "w" ) do file
     write( file, "Generator", "FeAmGen.jl" )
     write( file, "n_inc", n_inc )
@@ -1452,7 +1446,7 @@ end # function write_out_amplitude
         scale2_list::Vector{Basic},
         mom_symmetry::Dict{Basic,Basic},
         color_symmetry::Dict{Int64,Int64},
-        proc_str::String
+        visual_dir::String
     )::Nothing
 
 Write out the diagrams into the file that can be complied or read easily.
@@ -1470,8 +1464,7 @@ function write_out_visual_graph(
     scale2_list::Vector{Basic},
     mom_symmetry::Dict{Basic,Basic},
     color_symmetry::Dict{Int64,Int64},
-    proc_str::String;
-    dir::String=pwd()
+    visual_dir::String
 )::Nothing
 #########################################################################
 
@@ -1479,7 +1472,7 @@ function write_out_visual_graph(
   graph_str = replace( graph_str, "SymEngine.Basic"=>"Basic" )
 
   printstyled( "\n[ Generate visual_diagram$(graph_index).tex ]\n", color=:green )
-  visual_file = open( joinpath( dir, "$(proc_str)_visuals", "visual_diagram$(graph_index).tex" ), "w" )
+  visual_file = open( joinpath( visual_dir, "visual_diagram$(graph_index).tex" ), "w" )
   write( visual_file, """
   \\documentclass{revtex4}
   \\usepackage{tikz-feynman}
@@ -1497,7 +1490,7 @@ function write_out_visual_graph(
 
 
   #--------------------------------
-  expression_file = open( joinpath( dir, "$(proc_str)_visuals", "expression_diagram$(graph_index).out" ), "w" )
+  expression_file = open( joinpath( visual_dir, "expression_diagram$(graph_index).out" ), "w" )
   #--------------------------------
 
   write( expression_file, """
@@ -1701,7 +1694,7 @@ function generate_amplitude(
     model::Model,
     input::Dict{Any,Any};
     dir::String=pwd()
-)::Nothing
+)::Tuple{String, String}
 ##########################################################################
 
   n_inc = length(input["incoming"])
@@ -1763,8 +1756,10 @@ function generate_amplitude(
   write( file, "symbol $(join( map( string, (collect∘keys)(model.parameter_dict) ), "," ));\n" )
   close(file)
 
-  (bk_mkdir ∘ joinpath)( dir,  "$(proc_str)_visuals" )
-  (bk_mkdir ∘ joinpath)( dir, "$(proc_str)_amplitudes" )
+  amp_dir = joinpath(dir, "$(proc_str)_amplitudes")
+  visual_dir = joinpath(dir, "$(proc_str)_visuals")
+  bk_mkdir( amp_dir )
+  bk_mkdir( visual_dir )
 
   # baseINC only needs information from the external fields.
   baseINC_script_str = make_baseINC_script( first(graph_list) )
@@ -1897,15 +1892,16 @@ function generate_amplitude(
 
     min_ep_xpt = input["Amp_Min_Ep_Xpt"]
     max_ep_xpt = input["Amp_Max_Ep_Xpt"]
+    
     write_out_amplitude( n_inc, n_loop, graph_index, signed_symmetry_factor,
         couplingfactor, model.parameter_dict, model.coupling_dict,
         ext_mom_list, scale2_list, kin_relation, baseINC_script_str,
         color_list, lorentz_list, loop_den_list, canon_map, loop_den_xpt_list,
-        mom_symmetry, color_symmetry, min_ep_xpt, max_ep_xpt, proc_str; dir=dir )
+        mom_symmetry, color_symmetry, min_ep_xpt, max_ep_xpt, amp_dir )
 
     write_out_visual_graph( g, graph_index, model, couplingfactor,
         color_list, lorentz_list, loop_den_list, loop_den_xpt_list,
-        ext_mom_list, scale2_list, mom_symmetry, color_symmetry, proc_str; dir=dir )
+        ext_mom_list, scale2_list, mom_symmetry, color_symmetry, visual_dir )
 
   end # for graph_index
 
@@ -1920,20 +1916,18 @@ function generate_amplitude(
   #---------------------
   cp(
     joinpath( art_dir(), "scripts", "tikz-feynman.sty"),
-    joinpath( dir, "$(proc_str)_visuals", "tikz-feynman.sty" ),
+    joinpath( visual_dir, "tikz-feynman.sty" ),
     force=true
   )
   cp(
     joinpath( art_dir(), "scripts", "generate_diagram_pdf.jl"),
-    joinpath( dir, "$(proc_str)_visuals", "generate_diagram_pdf.jl" ),
+    joinpath( visual_dir, "generate_diagram_pdf.jl" ),
     force=true
   )
-  # cp( "$(art_dir())/scripts/tikz-feynman.sty", "$(proc_str)_visuals/tikz-feynman.sty" )
-  # cp( "$(art_dir())/scripts/generate_diagram_pdf.jl", "$(proc_str)_visuals/generate_diagram_pdf.jl" )
 
   @info "Users can generate PDF files for all diagrams." script="generate_diagram_pdf.jl"
 
-  return nothing
+  return amp_dir, visual_dir
 
 end # function generate_amplitude
 

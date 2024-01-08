@@ -7,7 +7,7 @@ Read-in the card for the specific process and produce the relevant amplitude.
 This function is one of the front-end functions in FeAmGen.jl.
 The directory of model files are supposed in ".".
 """
-function generate_amp( proc_file::String; model_paths=[pwd()] )::Nothing
+function generate_amp( proc_file::String; model_paths=[pwd()] )::Tuple{String, String}
 ######################################################################
 
   #------------------------------------------------------------------
@@ -26,7 +26,7 @@ function generate_amp( proc_file::String; model_paths=[pwd()] )::Nothing
   model = readin_model( input; model_paths=model_paths )
   # cd(proc_dir)
   generate_QGRAF_model( model; dir=proc_dir )
-  logging_model( model )
+  logging_model( model; dir=proc_dir )
   #------------------------------------------------------------------
 
   @info "Usage of unitary gauge" unitary_gauge=input["unitary_gauge"]
@@ -57,11 +57,7 @@ function generate_amp( proc_file::String; model_paths=[pwd()] )::Nothing
   # Run the QGRAF
   generate_Feynman_diagram( model, input; dir=proc_dir )
 
-  generate_amplitude( model, input; dir=proc_dir )
-
-  # cd(working_dir)
-
-  return nothing
+  return generate_amplitude( model, input; dir=proc_dir )
 
 end # function generate_amp
 
