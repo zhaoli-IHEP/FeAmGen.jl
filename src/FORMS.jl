@@ -169,7 +169,8 @@ end # function make_baseINC_script
 Prepare the FORM script for the amplitude contraction, but do not do the expansion for the amplitude.
 """
 function make_amp_contraction_noexpand_script(
-    expr::Basic
+    expr::Basic;
+    dir::String=pwd()
 )::String
 ##############################################################################
 
@@ -179,8 +180,8 @@ function make_amp_contraction_noexpand_script(
   Off Statistics;
   Off FinalStats;
 
-  #include model_parameters.frm
-  #include contractor.frm
+  #include $(joinpath( dir, "model_parameters.frm" ))
+  #include $(joinpath( art_dir(), "scripts", "contractor.frm" ))
 
   symbol sqrteta;
 
@@ -198,7 +199,7 @@ function make_amp_contraction_noexpand_script(
 
   #call SimplificationNoExpand();
 
-  #include kin_relation.frm
+  #include $(joinpath( dir, "kin_relation.frm" ))
   .sort
 
   ***repeat;
@@ -281,7 +282,7 @@ function make_color_script(
   format nospaces;
   format maple;
   
-  #include color.frm
+  #include $(joinpath( art_dir(), "scripts", "color.frm" ))
   
   Local colorFactor = $(color_factor);
   

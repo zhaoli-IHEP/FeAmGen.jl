@@ -10,7 +10,8 @@ Prepare the model file for `QGRAF`.
 """
 function prepare_qgraf_dat(
     model::Model,
-    input::Dict{Any,Any}
+    input::Dict{Any,Any};
+    dir::String=pwd()
 )::Nothing
 #######################################################
 
@@ -27,7 +28,7 @@ function prepare_qgraf_dat(
 
   # In this file `loops` is chosen as `n_loop+QCDCT_order`
   #   because we implement the counterterm via tadpole loop of auxiliary field.
-  file = open( "qgraf.dat", "w" )
+  file = open( joinpath( dir, "qgraf.dat" ), "w" )
   write( file, """
     output='qgraf_out.dat';
     style='miracle.sty';
@@ -58,7 +59,7 @@ function prepare_qgraf_dat(
     """ )
   close(file)
 
-  file = open( "miracle.sty", "w" )
+  file = open( joinpath( dir, "miracle.sty" ), "w+" )
   write( file, """
   <prologue>
   #
@@ -124,22 +125,23 @@ Interface to generating Feynman diagrams by using `QGRAF`.
 """
 function generate_Feynman_diagram(
     model::Model,
-    input::Dict{Any,Any}
+    input::Dict{Any,Any};
+    dir::String=pwd()
 )::Nothing
 #######################################################################
 
   printstyled( "[ Generate Feynman diagrams using QGRAF ]\n", color=:green )
 
-  prepare_qgraf_dat( model, input )
+  prepare_qgraf_dat( model, input; dir=dir )
 
-  rm( "qgraf_out.dat"; force=true, recursive=true )
-  run( pipeline( `$(qgraf())`, "qgraf.log" ) )
-  @assert isfile( "qgraf_out.dat" )
+  rm( joinpath(dir, "qgraf_out.dat"); force=true, recursive=true )
+  run( pipeline( Cmd( qgraf(), dir=dir ), joinpath( dir, "qgraf.log" ) ) )
+  @assert (isfile ∘ joinpath)( dir, "qgraf_out.dat" )
 
-  rm( "qgraf.dat" )
-  rm( "qgraf.log" )
-  rm( "model.qgraf" )
-  rm( "miracle.sty" )
+  (rm ∘ joinpath)( dir, "qgraf.dat" )
+  (rm ∘ joinpath)( dir, "qgraf.log" )
+  (rm ∘ joinpath)( dir, "model.qgraf" )
+  (rm ∘ joinpath)( dir, "miracle.sty" )
 
   return nothing
 
@@ -1156,7 +1158,8 @@ Contract the Dirac indices in the `lorentz_expr_list` by using FORM scripts,
 function contract_Dirac_indices_noexpand(
     g::Graph,
     graph_index::Int64,
-    lorentz_expr_list::Vector{Basic}
+    lorentz_expr_list::Vector{Basic};
+    dir::String=pwd()
 )::Vector{Basic}
 ##################################################################################
 
@@ -1168,7 +1171,7 @@ function contract_Dirac_indices_noexpand(
   for index in 1:length(lorentz_expr_list)
     lorentz_expr = lorentz_expr_list[index]
     file_name = "contract_lorentz_expr$(index)_diagram$(graph_index)_noexpand"
-    form_script_str = make_amp_contraction_noexpand_script( lorentz_expr )
+    form_script_str = make_amp_contraction_noexpand_script( lorentz_expr; dir=dir )
 
     result_io = IOBuffer()
 
@@ -1300,13 +1303,14 @@ function write_out_amplitude(
     color_symmetry::Dict{Int64,Int64},
     min_ep_xpt::Int64,
     max_ep_xpt::Int64,
-    proc_str::String
+    proc_str::String;
+    dir::String=pwd()
 )::Nothing
 ###############################################################################################
 
 
   printstyled( "\n[ Generate amp$(graph_index).out ]\n", color=:green )
-  amp_file = open( "$(proc_str)_amplitudes/amp$(graph_index).out", "w" )
+  amp_file = open( joinpath( dir, "$(proc_str)_amplitudes" ,"amp$(graph_index).out" ), "w" )
   write( amp_file, """
     n_loop: $(n_loop)
     couplingfactor: $(couplingfactor)
@@ -1395,7 +1399,8 @@ function write_out_amplitude(
 
 
 
-  jldopen( "$(proc_str)_amplitudes/amp$(graph_index).jld2", "w" ) do file
+  amp_jld2_file = joinpath( dir, "$(proc_str)_amplitudes" ,"amp$(graph_index).jld2" )
+  jldopen( amp_jld2_file, "w" ) do file
     write( file, "Generator", "FeAmGen.jl" )
     write( file, "n_inc", n_inc )
     write( file, "n_loop", n_loop )
@@ -1465,7 +1470,8 @@ function write_out_visual_graph(
     scale2_list::Vector{Basic},
     mom_symmetry::Dict{Basic,Basic},
     color_symmetry::Dict{Int64,Int64},
-    proc_str::String
+    proc_str::String;
+    dir::String=pwd()
 )::Nothing
 #########################################################################
 
@@ -1473,7 +1479,7 @@ function write_out_visual_graph(
   graph_str = replace( graph_str, "SymEngine.Basic"=>"Basic" )
 
   printstyled( "\n[ Generate visual_diagram$(graph_index).tex ]\n", color=:green )
-  visual_file = open( "$(proc_str)_visuals/visual_diagram$(graph_index).tex", "w" )
+  visual_file = open( joinpath( dir, "$(proc_str)_visuals", "visual_diagram$(graph_index).tex" ), "w" )
   write( visual_file, """
   \\documentclass{revtex4}
   \\usepackage{tikz-feynman}
@@ -1491,7 +1497,7 @@ function write_out_visual_graph(
 
 
   #--------------------------------
-  expression_file = open( "$(proc_str)_visuals/expression_diagram$(graph_index).out", "w" )
+  expression_file = open( joinpath( dir, "$(proc_str)_visuals", "expression_diagram$(graph_index).out" ), "w" )
   #--------------------------------
 
   write( expression_file, """
@@ -1693,7 +1699,8 @@ Generate amplitudes after `model` has been prepared.
 """
 function generate_amplitude(
     model::Model,
-    input::Dict{Any,Any}
+    input::Dict{Any,Any};
+    dir::String=pwd()
 )::Nothing
 ##########################################################################
 
@@ -1705,13 +1712,13 @@ function generate_amplitude(
 
   couplingfactor = Basic(input["couplingfactor"])
 
-  qgraf_out = YAML.load_file( "qgraf_out.dat" )
-  rm( "qgraf_out.dat" )
+  qgraf_out = (YAML.load_file ∘ joinpath)( dir, "qgraf_out.dat" )
+  (rm ∘ joinpath)( dir, "qgraf_out.dat" )
 
   qgraf_list = qgraf_out["FeynmanDiagrams"]
   if isnothing( qgraf_list )
     @warn "QGRAF returns no graph!"
-    write("NoGraph.txt", "QGRAF returns no graph!")
+    write( joinpath( dir, "NoGraph.txt" ), "QGRAF returns no graph!")
     return nothing
   end # if
 
@@ -1730,7 +1737,7 @@ function generate_amplitude(
   #------------------------------------------------
   # Generate kinematics relation
   kin_relation = generate_kin_relation( graph_list )
-  file = open( "kin_relation.frm", "w" )
+  file = open( joinpath( dir, "kin_relation.frm" ), "w+" )
   write( file, (join∘map)( x->"id $(x[1]) = $(x[2]);\n", collect(kin_relation) ) )
   close(file)
 
@@ -1741,15 +1748,23 @@ function generate_amplitude(
 
   #------------------------------------------------
   # Calculate amplitude for each graph
-  cp( "$(art_dir())/scripts/contractor.frm", "contractor.frm", force=true )
-  cp( "$(art_dir())/scripts/color.frm", "color.frm", force=true )
+  # cp(
+  #   joinpath( art_dir(), "scripts", "contractor.frm"),
+  #   joinpath( dir, "contractor.frm" ),
+  #   force=true
+  # ) # end copy
+  # cp( 
+  #   joinpath( art_dir(), "scripts", "color.frm" ),
+  #   joinpath( dir, "color.frm" ),
+  #   force=true
+  # ) # end copy
 
-  file = open( "model_parameters.frm", "w" )
+  file = open( joinpath( dir, "model_parameters.frm" ), "w+" )
   write( file, "symbol $(join( map( string, (collect∘keys)(model.parameter_dict) ), "," ));\n" )
   close(file)
 
-  bk_mkdir( "$(proc_str)_visuals" )
-  bk_mkdir( "$(proc_str)_amplitudes" )
+  (bk_mkdir ∘ joinpath)( dir,  "$(proc_str)_visuals" )
+  (bk_mkdir ∘ joinpath)( dir, "$(proc_str)_amplitudes" )
 
   # baseINC only needs information from the external fields.
   baseINC_script_str = make_baseINC_script( first(graph_list) )
@@ -1853,7 +1868,7 @@ function generate_amplitude(
 
 
     #-----------------------------------------------------------------
-    lorentz_list = contract_Dirac_indices_noexpand( g, graph_index, lorentz_list_pre )
+    lorentz_list = contract_Dirac_indices_noexpand( g, graph_index, lorentz_list_pre; dir=dir )
 
     # union the same color factors or same lorentz amplitudes.
     lorentz_list, color_list = union_color_lorentz( lorentz_list, color_list )
@@ -1886,25 +1901,35 @@ function generate_amplitude(
         couplingfactor, model.parameter_dict, model.coupling_dict,
         ext_mom_list, scale2_list, kin_relation, baseINC_script_str,
         color_list, lorentz_list, loop_den_list, canon_map, loop_den_xpt_list,
-        mom_symmetry, color_symmetry, min_ep_xpt, max_ep_xpt, proc_str )
+        mom_symmetry, color_symmetry, min_ep_xpt, max_ep_xpt, proc_str; dir=dir )
 
     write_out_visual_graph( g, graph_index, model, couplingfactor,
         color_list, lorentz_list, loop_den_list, loop_den_xpt_list,
-        ext_mom_list, scale2_list, mom_symmetry, color_symmetry, proc_str )
+        ext_mom_list, scale2_list, mom_symmetry, color_symmetry, proc_str; dir=dir )
 
   end # for graph_index
 
   box_message( "Found number of null diagrams: $(length(null_graph_index_list))", color=:yellow )
 
   # remove intermediate files
-  rm( "contractor.frm" )
-  rm( "color.frm" )
-  rm( "kin_relation.frm" )
-  rm( "model_parameters.frm" )
+  # (rm ∘ joinpath)( dir, "contractor.frm" )
+  # (rm ∘ joinpath)( dir, "color.frm" )
+  (rm ∘ joinpath)( dir, "kin_relation.frm" )
+  (rm ∘ joinpath)( dir, "model_parameters.frm" )
 
   #---------------------
-  cp( "$(art_dir())/scripts/tikz-feynman.sty", "$(proc_str)_visuals/tikz-feynman.sty" )
-  cp( "$(art_dir())/scripts/generate_diagram_pdf.jl", "$(proc_str)_visuals/generate_diagram_pdf.jl" )
+  cp(
+    joinpath( art_dir(), "scripts", "tikz-feynman.sty"),
+    joinpath( dir, "$(proc_str)_visuals", "tikz-feynman.sty" ),
+    force=true
+  )
+  cp(
+    joinpath( art_dir(), "scripts", "generate_diagram_pdf.jl"),
+    joinpath( dir, "$(proc_str)_visuals", "generate_diagram_pdf.jl" ),
+    force=true
+  )
+  # cp( "$(art_dir())/scripts/tikz-feynman.sty", "$(proc_str)_visuals/tikz-feynman.sty" )
+  # cp( "$(art_dir())/scripts/generate_diagram_pdf.jl", "$(proc_str)_visuals/generate_diagram_pdf.jl" )
 
   @info "Users can generate PDF files for all diagrams." script="generate_diagram_pdf.jl"
 

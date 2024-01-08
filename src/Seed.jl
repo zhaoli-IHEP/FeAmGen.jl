@@ -58,8 +58,8 @@ function digest_seed_proc( seed_file::String; model_paths::Vector{String}=[pwd()
   @info "Filtered subprocesses" 
   for proc_str in proc_set 
     part_str_list = split( proc_str, "," )
-    inc_str = join( part_str_list[1:n_inc], "," )
-    out_str = join( part_str_list[n_inc+1:end], "," )
+    inc_str = join( part_str_list[1:n_inc], ", " )
+    out_str = join( part_str_list[n_inc+1:end], ", " )
     pretty_str = "$(inc_str) => $(out_str)"
     @info "  "*pretty_str
   end # for proc_str
@@ -68,22 +68,20 @@ function digest_seed_proc( seed_file::String; model_paths::Vector{String}=[pwd()
 
   #----------------------------------------------------------------------------------------------
   bk_mkdir( parton_proc_str )
-  cd( parton_proc_str ) 
+  # cd( parton_proc_str ) 
 
   @info "[ Generate subprocesses cards in $(parton_proc_str) ]"
   proc_list = Vector{String}()
   for proc_str in proc_set 
-    proc_name = write_card( proc_str, n_inc, input )
+    proc_name = write_card( parton_proc_str, proc_str, n_inc, input )
     push!( proc_list, proc_name )
   end # for proc_name
   @info "Done" 
 
-  cd( ".." )
+  # cd( ".." )
   #----------------------------------------------------------------------------------------------
 
-  card_list = map( x->"$(parton_proc_str)/$x.yaml", proc_list )
-
-  return card_list
+  return proc_list
 
 end # function digest_seed_proc
 

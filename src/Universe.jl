@@ -293,10 +293,10 @@ end # function to_qgraf_name
 
 Write out the model file that can be used by QGRAF.
 """
-function generate_QGRAF_model( model::Model )::Nothing
+function generate_QGRAF_model( model::Model; dir::String=pwd() )::Nothing
 ################################################
 
-  file = open( "model.qgraf", "w" )
+  file = open( joinpath(dir, "model.qgraf"), "w+" )
 
   nonnegkf_part_list = filter( p_ -> p_.kf >= 0, model.particle_list )
   sign_str_list = map( p_ -> p_.spin in [:fermion,:ghost] ? "-" : "+", nonnegkf_part_list )

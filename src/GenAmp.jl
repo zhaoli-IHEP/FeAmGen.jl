@@ -12,7 +12,7 @@ function generate_amp( proc_file::String; model_paths=[pwd()] )::Nothing
 
   #------------------------------------------------------------------
   @assert isfile(proc_file) "The first argument is not a file!"
-  working_dir = pwd()
+  # working_dir = pwd()
   proc_dir = begin
     tmp_dir = dirname(proc_file)
     isempty(tmp_dir) ? pwd() : tmp_dir
@@ -24,8 +24,8 @@ function generate_amp( proc_file::String; model_paths=[pwd()] )::Nothing
   #------------------------------------------------------------------
   @info "Choose model" model=input["model_name"]
   model = readin_model( input; model_paths=model_paths )
-  cd(proc_dir)
-  generate_QGRAF_model( model )
+  # cd(proc_dir)
+  generate_QGRAF_model( model; dir=proc_dir )
   logging_model( model )
   #------------------------------------------------------------------
 
@@ -55,11 +55,11 @@ function generate_amp( proc_file::String; model_paths=[pwd()] )::Nothing
 
   #----------------------------------------------------------------------
   # Run the QGRAF
-  generate_Feynman_diagram( model, input )
+  generate_Feynman_diagram( model, input; dir=proc_dir )
 
-  generate_amplitude( model, input )
+  generate_amplitude( model, input; dir=proc_dir )
 
-  cd(working_dir)
+  # cd(working_dir)
 
   return nothing
 
