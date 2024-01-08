@@ -1,7 +1,7 @@
 name = "FeAmGen"
 uuid = "09acbd30-6a93-4470-b10f-afabe20e3192"
 authors = ["zhaoli-IHEP <zhaoli@ihep.ac.cn>", "Quan-feng WU <wuquanfeng@ihep.ac.cn>"]
-version = "1.0.1"
+version = "1.0.2"
 
 [deps]
 AbstractAlgebra = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
