@@ -170,8 +170,8 @@ end # function normalize_loop_mom
 
 
 #########################################################
-# Created by Quan-feng Wu
-# Feb. 16 2023
+# Created by Quan-feng Wu on Feb. 16 2023
+# Modified by Quan-feng Wu on Jan. 11 2024
 function gen_loop_mom_canon_map(
     mom_list::Vector{Basic}
 )::Dict{Basic,Basic}
@@ -266,8 +266,8 @@ end # function gen_loop_mom_canon_map
 
 
 #########################################################
-# Created by Quan-feng Wu
-# Mar. 26 2023
+# Created by Quan-feng Wu on Mar. 26 2023
+# Modified by Quan-feng Wu on Jan. 11 2024
 #
 # A simple trial for sorting the replace rules generated in `gen_loop_mom_canon_map`.
 function get_sort_order(
@@ -277,26 +277,28 @@ function get_sort_order(
 
   tmp_mom_list = map( normalize_loop_mom_single, mom_list )
   unique!( tmp_mom_list )
-  sort!( tmp_mom_list; by=string )
+  # sort!( tmp_mom_list; by=string )
   q_list = get_loop_momenta( tmp_mom_list )
   k_list = get_ext_momenta( tmp_mom_list )
-  qk_list = vcat(q_list, k_list)
+  qk_list = vcat( q_list, k_list )
 
-  order = BigInt[1]
+  order_list = BigInt[]
 
   for mom ∈ tmp_mom_list
     mom_qk_coeff_mat = coefficient_matrix( [mom], qk_list )
 
     qk_str = (join∘map)( coeff->coeff==-1 ? "2" : string(coeff), mom_qk_coeff_mat )
 
-    order[1] *= parse(BigInt, reverse(qk_str), base=3)
+    push!( order_list, parse( BigInt, reverse(qk_str), base=3 ) )
+    # order[1] *= parse(BigInt, reverse(qk_str), base=3)
   end # for (mom_index, mom)
 
-  push!( order, parse( BigInt,
-                        (bytes2hex∘sha256)( "[" * join( tmp_mom_list, ", " ) * "]" );
-                        base=16 ) )
+  sort!( order_list )
+  # push!( order, parse( BigInt,
+  #                       (bytes2hex∘sha256)( "[" * join( tmp_mom_list, ", " ) * "]" );
+  #                       base=16 ) )
 
-  return order
+  return [prod(order_list), parse( BigInt, (bytes2hex∘sha256)(order_list); base=16 )]
 end # function get_sort_order
 
 
