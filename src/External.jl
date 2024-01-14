@@ -60,8 +60,7 @@ function build_qgraf(FC::String="gfortran")::String
     qgraf_source = (first∘filter)( endswith(".f08"), readdir(Pkg.artifact"QGRAF"; join=true) )
     fmodules_dir = (mkdir∘joinpath)( mktempdir(), "fmodules" )
 
-    main_file = (first ∘ filter)( startswith("main"), qgraf_source )
-    license_header = readlines( joinpath( Pkg.dir("QGRAF"), main_file ) )[begin:93]
+    license_header = readlines( qgraf_source )[begin:93]
     printstyled( "Before building QGRAF, please read the following license:\n", color=:yellow)
     println( join(license_header, "\n") )
     printstyled( "If you agree with the license, please type \"yes\" to continue: ", color=:yellow )

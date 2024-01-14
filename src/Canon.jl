@@ -298,7 +298,7 @@ function get_sort_order(
   #                       (bytes2hex∘sha256)( "[" * join( tmp_mom_list, ", " ) * "]" );
   #                       base=16 ) )
 
-  return [prod(order_list), parse( BigInt, (bytes2hex∘sha256)(order_list); base=16 )]
+  return [prod(order_list), (BigInt ∘ hash)(order_list)]
 end # function get_sort_order
 
 
