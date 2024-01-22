@@ -430,7 +430,7 @@ end # function find_mom_shift
 ###########################################
 function construct_den_topology(
     amp_dir::String; 
-    mom_shift_opt::Bool,
+    mom_shift_opt::Bool=false,
     ref_dentop_collect::Union{String,Vector{DenTop}}=DenTop[],
 )::Vector{DenTop}
 ###########################################
