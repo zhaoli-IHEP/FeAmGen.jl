@@ -226,7 +226,7 @@ function get_cover_indices_list(
 
     prev_indices_list = this_indices_list[ pos_list ]
     push!( graded_indices_list, prev_indices_list )
-  end # for _
+  end # for
 
   result_indices_list = Vector{Int}[]
   for n_index ∈ (reverse∘eachindex)( graded_indices_list )
@@ -298,7 +298,7 @@ function make_complete_dentop_collect(
       end # vac_mom_list
 
       for ext_mom ∈ vcat( zero(Basic), indep_ext_mom ), q ∈ vac_mom_list, the_sign ∈ [1,-1]
-        trial_den = Basic( "Den( $(expand( q + the_sign * ext_mom )), 0, 0 )" )
+        trial_den = SymFunction("Den")(expand(q + the_sign * ext_mom), 0, 0)
         trial_top = union( to_be_complete_dentop, trial_den )
         rank_trial_top = (rank∘get_coeff_mat_mom2_sp)(trial_top)
         if rank_trial_top > length(to_be_complete_dentop)

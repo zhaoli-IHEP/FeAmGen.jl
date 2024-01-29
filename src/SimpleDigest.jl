@@ -110,9 +110,7 @@ function filter_lepton_generations(
     proc_str::Union{String,Nothing}, n_inc::Int64, 
     part_dict::Dict{String,Particle} )::Union{String,Nothing}
 #################################################
-  if proc_str == nothing
-    return nothing
-  end
+  isnothing(proc_str) && return nothing
 
   part_str_list = split( proc_str, "," )
   part_list = map( s_ -> part_dict[s_], part_str_list )
@@ -160,9 +158,7 @@ function filter_quark_generations(
     proc_str::Union{String,Nothing}, n_inc::Int64, 
     part_dict::Dict{String,Particle} )::Union{String,Nothing}
 #################################################
-  if proc_str == nothing
-    return nothing
-  end
+  isnothing(proc_str) && return nothing
 
   part_str_list = split( proc_str, "," )
   part_list = map( s_ -> part_dict[s_], part_str_list )
@@ -206,9 +202,7 @@ function filter_charge(
     proc_str::Union{String,Nothing}, n_inc::Int64, 
     part_dict::Dict{String,Particle} )::Union{String,Nothing}
 #################################################
-  if proc_str == nothing
-    return nothing
-  end
+  isnothing(proc_str) && return nothing
 
   part_str_list = split( proc_str, "," )
   part_list = map( s_ -> part_dict[s_], part_str_list )
@@ -381,9 +375,8 @@ end # @testset
 """
 function sort_proc_str( proc_str::Union{String,Nothing}, n_inc::Int64 )::Union{String,Nothing}
 ################################################################
-  if proc_str == nothing
-    return nothing
-  end
+  isnothing(proc_str) && return nothing
+
   part_str_list = split( proc_str, "," )
   inc_str_list = convert( Vector{String}, part_str_list[1:n_inc] )
   out_str_list = convert( Vector{String}, part_str_list[n_inc+1:end] )

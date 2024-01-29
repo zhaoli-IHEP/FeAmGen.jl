@@ -1,7 +1,7 @@
 function construct_topology(
   amp_dir::String;
   method::Symbol=:Canonicalization,
-  options::Dict{String, Any}=Dict{String, Any}()
+  options::Dict{String, <:Any}=Dict{String, Any}()
 )
   # call old construct_den_topology API #######################################
   if method == :Canonicalization
@@ -26,7 +26,7 @@ end # function construct_topology
 
 function construct_topology(
   ::Val{:PakAlgorithm}, amp_dir::String,
-  options::Dict{String, Any}=Dict{String, Any}()
+  options::Dict{String, <:Any}=Dict{String, Any}()
 )::Dict
   # load den_collection #######################################################
   @assert isdir(amp_dir) "Got non-existent directory: $amp_dir."
@@ -37,7 +37,7 @@ function construct_topology(
                                             parse(Int, index_str)
                                           end)
   @assert !isempty(amp_filename_list) "Cannot find any amplitude file with extension .jld2 in $amp_dir."
-  original_den_collection_list = to_FeynmanDenominatorCollection(amp_filename_list)
+  original_den_collection_list = read_loop_denominators(Val(:Amplitude), amp_filename_list)
 
   # load kinematic relation ###################################################
   kin_relation_dict = Dict{Basic, Basic}()
@@ -116,7 +116,11 @@ function construct_topology(
   end # while
 
   top_dir_list = splitpath(amp_dir)
-  top_dir_list[end] *= "_topologies"
+  top_dir_list[end] = if endswith(top_dir_list[end], "amplitudes")
+    replace(top_dir_list[end], "amplitudes" => "Pak_topologies")
+  else
+    top_dir_list[end] *= "_Pak_topologies"
+  end
   topology_directory = joinpath(top_dir_list)
   bk_mkdir(topology_directory)
   write_topology(covering_dict, amp_filename_list, topology_directory, kin_relation_dict)
@@ -124,27 +128,27 @@ function construct_topology(
   return covering_dict
 end # function construct_topology
 
-function to_FeynmanDenominatorCollection(amp_filename_list::Vector{String})::Vector{FeynmanDenominatorCollection}
-  den_collection = Vector{FeynmanDenominatorCollection}(undef, length(amp_filename_list))
-  for (amp_index, amp_filename) ∈ enumerate(amp_filename_list)
-    amp = load(amp_filename)
-    n_loop = amp["n_loop"]
-    loop_den_list = map(Basic, amp["loop_den_list"])
-
-    loop_momenta = ["q$ii" for ii ∈ 1:n_loop]
-    external_momenta = amp["ext_mom_list"]
-    den_list = Vector{FeynmanDenominator}(undef, length(loop_den_list))
-    for (den_index, loop_den) ∈ enumerate(loop_den_list)
-      @assert get_name(loop_den) == "Den"
-      mom, mass, width = get_args(loop_den)
-      den_list[den_index] = FeynmanDenominator(mom, mass, width)
-    end # for
-
-    den_collection[amp_index] = FeynmanDenominatorCollection(loop_momenta, external_momenta, den_list)
+read_loop_denominators(opt::Any, file_name_list::Vector{String}) =
+  map(file_name -> read_loop_denominators(opt, file_name), file_name_list)
+function read_loop_denominators(::Val{:Amplitude}, amplitude_file_name::String)::FeynmanDenominatorCollection
+  amplitude_file = load(amplitude_file_name)
+  n_loop = amplitude_file["n_loop"]
+  loop_den_list = map(Basic, amplitude_file["loop_den_list"])
+  loop_momenta = ["q$ii" for ii ∈ 1:n_loop]
+  external_momenta = subs.(
+    map(Basic, amplitude_file["ext_mom_list"]),
+    (Ref ∘ Dict{Basic, Basic})(Basic(key) => Basic(value) for (key, value) ∈ amplitude_file["mom_symmetry"])
+  ) # end external_momenta
+  unique!(external_momenta)
+  den_list = Vector{FeynmanDenominator}(undef, length(loop_den_list))
+  for (den_index, loop_den) ∈ enumerate(loop_den_list)
+    @assert get_name(loop_den) == "Den"
+    mom, mass, width = get_args(loop_den)
+    den_list[den_index] = FeynmanDenominator(mom, mass, width)
   end # for
 
-  return den_collection
-end # function to_FeynmanDenominatorCollection
+  return FeynmanDenominatorCollection(loop_momenta, external_momenta, den_list)
+end # function read_loop_denominators
 
 function write_topology(
   topology_dict::Dict{FeynmanDenominatorCollection, Dict{Int, Vector{Dict{Basic, Basic}}}},
@@ -152,7 +156,7 @@ function write_topology(
 )::Nothing
   counter = 1
   for (key_collection, covering_dict) ∈ topology_dict
-    topology_filename = joinpath(topology_directory, "topology_$(counter).jld2")
+    topology_filename = joinpath(topology_directory, "topology$(counter).jld2")
     @info "Writing topology file: $topology_filename."
     jldopen(topology_filename, "w+") do f
       f["loop_momenta"] = key_collection.loop_momenta
@@ -169,16 +173,16 @@ function write_topology(
       f["denominators"] = map(string, key_collection.denominators)
     end # jldopen
 
-    topology_outname = joinpath(topology_directory, "topology_$(counter).out")
+    topology_outname = joinpath(topology_directory, "topology$(counter).out")
     open(topology_outname, "w") do f
-      write(f, string(key_collection))
-      write(f, "        covering amplitude files:\n")
+      write(f, key_collection)
+      write(f, "    covering amplitude files:\n")
       for (key, value) ∈ covering_dict
-        write(f, "            $(relative_path(topology_outname, amp_file_list[key])):\n")
+        write(f, "        $(relative_path(topology_outname, amp_file_list[key])):\n")
         for repl_rules ∈ value
-          write(f, "                - |\n")
+          write(f, "            - |\n")
           for (k, v) ∈ repl_rules
-            write(f, "                    - $k => $v\n")
+            write(f, "                - $k => $v\n")
           end # for
         end # for
       end # for
