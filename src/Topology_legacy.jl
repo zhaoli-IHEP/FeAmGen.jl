@@ -249,7 +249,7 @@ function greedy(
     indices_list::Vector{Vector{Int}}
 )::Vector{Vector{Int}}
 ###########################################
-  universe = union( indices_list... )
+  universe = reduce(union,  indices_list)
 
   new_indices_list = Vector{Int}[]
 
@@ -428,7 +428,7 @@ function find_mom_shift(
 end # function find_mom_shift
 
 ###########################################
-function construct_den_topology(
+function construct_den_topology_legacy(
     amp_dir::String; 
     mom_shift_opt::Bool=false,
     ref_dentop_collect::Union{String,Vector{DenTop}}=DenTop[],

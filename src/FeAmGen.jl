@@ -48,7 +48,6 @@ include("Seed.jl")
 include("SimpleDigest.jl")
 include("ToMathematicaForm.jl")
 include("Topology.jl")
-include("Topology_legacy.jl")
 include("Visual.jl")
 include("Utils.jl")
 
