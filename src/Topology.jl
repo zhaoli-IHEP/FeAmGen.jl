@@ -125,110 +125,6 @@ function construct_den_topology(
   return result_topology_list
 end # function construct_topology
 
-function construct_topology(
-  ::Val{:PakAlgorithm}, amp_dir::String,
-  options::Dict{String, <:Any}=Dict{String, Any}()
-)::Dict
-  # load den_collection #######################################################
-  @assert isdir(amp_dir) "Got non-existent directory: $amp_dir."
-  amp_filename_list = filter!(endswith(".jld2"), readdir(amp_dir; join=true, sort=false))
-  sort!(amp_filename_list, by=filename -> begin
-                                            main_name, _ = (splitext ∘ basename)(filename)
-                                            index_str = match(r"[1-9]\d*", main_name).match
-                                            parse(Int, index_str)
-                                          end)
-  @assert !isempty(amp_filename_list) "Cannot find any amplitude file with extension .jld2 in $amp_dir."
-  original_den_collection_list = read_loop_denominators(Val(:AmplitudeFile), amp_filename_list)
-
-  # load kinematic relation ###################################################
-  kin_relation_dict = Dict{Basic, Basic}()
-  if haskey(options, "check_all_kin_relation") && options["check_all_kin_relation"]
-    for amp_file ∈ amp_filename_list
-      kin_relation = load(amp_file, "kin_relation")
-      for (key, value) ∈ kin_relation
-        key = Basic(key)
-        value = Basic(value)
-        get_name(key) == "SP" || continue
-        haskey(kin_relation_dict, key) && 
-          @assert kin_relation_dict[key] == value """
-          \rGot different kinematic relation:
-          \r    - $key => $(kin_relation_dict[key]) in previous files;
-          \r    - $key => $value in $amp_file.
-          """
-        kin_relation_dict[key] = value
-      end # for (key, value)
-    end # for amp_file
-  end # if
-  for (key, value) ∈ load(first(amp_filename_list), "kin_relation")
-    key = Basic(key)
-    get_name(key) == "SP" || continue
-    kin_relation_dict[key] = Basic(value)
-  end # for (key, value)
-
-  # construct topology ########################################################
-  covering_dict = Dict{FeynmanDenominatorCollection, Dict{Int, Vector{Dict{Basic, Basic}}}}()
-  remaining_indices = (collect ∘ eachindex)(original_den_collection_list)
-  while !isempty(remaining_indices)
-    @info "Number of remaining indices: $(length(remaining_indices))."
-
-    _, index_index = findmax(length, original_den_collection_list[remaining_indices])
-    largest_index = remaining_indices[index_index]
-    # index_index, largest_index = 1, first(remaining_indices)
-    while true
-      tmp_den_collection = original_den_collection_list[largest_index]
-      tmp_index_index = findnext(
-        index -> tmp_den_collection ≠ original_den_collection_list[index] &&
-          !is_Pak_equivalent(
-            tmp_den_collection, original_den_collection_list[index];
-            SP_replacements=kin_relation_dict
-          ) && original_den_collection_list[index] ⊇ tmp_den_collection || check_Pak_covering(
-            original_den_collection_list[index], tmp_den_collection;
-            SP_replacements=kin_relation_dict
-          ),
-        remaining_indices, index_index + 1
-      )
-      isnothing(tmp_index_index) && break
-      index_index, largest_index = tmp_index_index, remaining_indices[tmp_index_index]
-    end
-
-    key_collection = original_den_collection_list[largest_index]
-    all_repl_rules_list = Vector{Vector{Dict{Basic, Basic}}}(undef, length(remaining_indices))
-    for (ii, index) ∈ enumerate(remaining_indices)
-      target_collection = original_den_collection_list[index]
-      if index == largest_index || key_collection ⊇ target_collection
-        all_repl_rules_list[ii] = [Dict{Basic, Basic}()] # do not check the same topology or directly sub-topology
-        continue
-      end # if
-      print("\rChecking $largest_index covering: $(ii) / $(length(remaining_indices)).")
-      all_repl_rules_list[ii] = find_Pak_momentum_shifts(
-        key_collection, target_collection;
-        SP_replacements=kin_relation_dict,
-        find_external_momentum_shifts_flag=haskey(options, "find_external_momentum_shifts") ?
-          options["find_external_momentum_shifts"] : false
-      )
-    end # for index ∈ remaining_indices
-      
-    indices = findall(!isempty, all_repl_rules_list)
-    covering_dict[key_collection] = Dict{Int, Vector{Dict{Basic, Basic}}}(
-      remaining_indices[indices] .=> all_repl_rules_list[indices]
-    )
-    deleteat!(remaining_indices, indices)
-    print("\r")
-  end # while
-
-  top_dir_list = splitpath(amp_dir)
-  top_dir_list[end] = if endswith(top_dir_list[end], "amplitudes")
-    replace(top_dir_list[end], "amplitudes" => "Pak_topologies")
-  else
-    top_dir_list[end] *= "_Pak_topologies"
-  end
-  topology_directory = joinpath(top_dir_list)
-  bk_mkdir(topology_directory)
-  write_topology(covering_dict, amp_filename_list, topology_directory, kin_relation_dict)
-
-  return covering_dict
-end # function construct_topology
-
 function read_loop_denominators(
   ::Val{:AmplitudeDirectory},
   amplitude_directory::String,
@@ -331,10 +227,17 @@ function minimize_topology_list_directly(
   # end initial information ###################################################
 
   den_list_list = Vector{FeynmanDenominator}[]
+  original_den_index_list = (collect ∘ eachindex)(original_den_list_list)
+  covering_indices = Vector{Int}[]
   while !isempty(original_den_list_list)
     _, index = findmax(length, original_den_list_list)
     target_den_list = original_den_list_list[index]
     push!(den_list_list, target_den_list)
+
+    tmp_indices = findall(den_list -> den_list ⊆ target_den_list, original_den_list_list)
+    push!(covering_indices, original_den_index_list[tmp_indices])
+    deleteat!(original_den_list_list, tmp_indices)
+
     filter!(den_list -> den_list ⊈ target_den_list, original_den_list_list)
   end # while
 
@@ -385,6 +288,7 @@ function minimize_topology_list_directly(
   @assert (isempty ∘ symdiff)(reduce(union, final_indices_list), eachindex(den_list_list))
 
   result_den_collection_list = FeynmanDenominatorCollection[]
+  result_covering_indices = Vector{Int}[]
   for indices ∈ final_indices_list
     den_list = reduce(union, den_list_list[indices])
     push!(result_den_collection_list,
@@ -393,9 +297,10 @@ function minimize_topology_list_directly(
         check_validity=false
       )
     ) # end push!
+    push!(result_covering_indices, reduce(union, covering_indices[indices]))
   end # for indices
 
-  return result_den_collection_list, final_indices_list
+  return result_den_collection_list, result_covering_indices
 end # function minimize_topology_list_directly
 
 function calculate_denominator_collection_rank(
