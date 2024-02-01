@@ -17,7 +17,6 @@ function construct_den_topology(
 
     _, index_index = findmax(length, den_collection_list[remaining_indices])
     largest_index = remaining_indices[index_index]
-    # index_index, largest_index = 1, first(remaining_indices)
     while true
       tmp_den_collection = den_collection_list[largest_index]
       tmp_index_index = findnext(
@@ -34,7 +33,7 @@ function construct_den_topology(
       )
       isnothing(tmp_index_index) && break
       index_index, largest_index = tmp_index_index, remaining_indices[tmp_index_index]
-    end
+    end # while
 
     key_collection = den_collection_list[largest_index]
     repl_rules_list = Vector{Union{Dict{Basic, Basic}, Nothing}}(undef, length(remaining_indices))
@@ -50,7 +49,7 @@ function construct_den_topology(
         SP_replacements=kinematic_relations,
         find_external_momentum_shifts=find_external_momentum_shifts
       ) # end find_Pak_momentum_shifts
-    end # for index ∈ remaining_indices
+    end # for (ii, index)
       
     indices = findall(!isnothing, repl_rules_list)
     push!(result_den_collection_list, key_collection)
@@ -58,10 +57,9 @@ function construct_den_topology(
       Dict{Int, Dict{Basic, Basic}}(remaining_indices[ii] => repl_rules_list[ii] for ii ∈ indices)
     ) # end push!
     deleteat!(remaining_indices, indices)
-    # print("\r")
   end # while
 
-  @info "Found $(length(result_den_collection_list)) topologies."
+  @info "Constructed $(length(result_den_collection_list)) topologies."
 
   return result_den_collection_list, result_repl_rules_list
 end # function construct_den_topology

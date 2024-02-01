@@ -6,9 +6,10 @@ function construct_den_topology(
   amp_dir::String;
   method_to_find_momentum_shifts::Symbol=:Canonicalization, # :Canonicalization or :PakAlgorithm
   check_momentum_shifts::Bool=true,
-  use_reference_topology::Bool=false,
-  reference_topology_directory::String="",
-  reference_topologies::Vector{FeynmanDenominatorCollection}=FeynmanDenominatorCollection[],
+  # use_reference_topology::Bool=false,
+  # reference_topology_directory::String="",
+  # reference_topologies::Vector{FeynmanDenominatorCollection}=FeynmanDenominatorCollection[],
+  complete_topologies::Bool=true,
   check_all_kinematic_relations::Bool=false,
   find_external_momentum_shifts::Bool=false,
   recheck_momentum_shifts::Bool=false
@@ -17,22 +18,37 @@ function construct_den_topology(
   # check options #############################################################
   @assert method_to_find_momentum_shifts ∈ [:Canonicalization, :PakAlgorithm] "Do not support method $method_to_find_momentum_shifts to find momentum shifts."
 
-  use_reference_topology &&
-    return construct_den_topology_with_reference_topology(
-      amp_dir;
-      method_to_find_momentum_shifts=method_to_find_momentum_shifts,
-      check_momentum_shifts=check_momentum_shifts,
-      reference_topology_directory=reference_topology_directory,
-      reference_topologies=reference_topologies,
-      check_all_kin_relation=check_all_kin_relation,
-      find_external_momentum_shifts=find_external_momentum_shifts
-    )
+  # use_reference_topology &&
+  #   return construct_den_topology_with_reference_topology(
+  #     amp_dir;
+  #     method_to_find_momentum_shifts=method_to_find_momentum_shifts,
+  #     check_momentum_shifts=check_momentum_shifts,
+  #     reference_topology_directory=reference_topology_directory,
+  #     reference_topologies=reference_topologies,
+  #     check_all_kin_relation=check_all_kin_relation,
+  #     find_external_momentum_shifts=find_external_momentum_shifts
+  #   )
   # end check options #########################################################
 
   # init ######################################################################
   amp_filename_list, ds_list, kin_relation_dict  = read_loop_denominators(
     Val(:AmplitudeDirectory), amp_dir, check_all_kinematic_relations
   )
+  covering_dict = Dict{FeynmanDenominatorCollection, Dict{Int, Dict{Basic, Basic}}}()
+
+  top_dir_list = splitpath(amp_dir)
+  topology_name = if method_to_find_momentum_shifts == :Canonicalization
+    "Canonicalization_topologies"
+  elseif method_to_find_momentum_shifts == :PakAlgorithm
+    "Pak_topologies"
+  end # if
+  top_dir_list[end] = if endswith(top_dir_list[end], "amplitudes")
+    replace(top_dir_list[end], "amplitudes" => topology_name)
+  else
+    top_dir_list[end] *= "_" * topology_name
+  end
+  topology_directory = joinpath(top_dir_list)
+  bk_mkdir(topology_directory)
   # end init ##################################################################
 
   # step 1 ####################################################################
@@ -44,9 +60,21 @@ function construct_den_topology(
   @info "Done and got $(length(minimal_topology_list)) initial topologies."
   # end step 1 ################################################################
 
+  if !check_momentum_shifts
+    @info "Do not check momentum shifts further."
+
+    for (ii, topology) ∈ enumerate(minimal_topology_list)
+      covering_dict[topology] = Dict{Int, Dict{Basic, Basic}}(covering_indices[ii] .=> Dict{Basic, Basic}())
+    end # for (ii, topology)
+
+    write_topology(covering_dict, amp_filename_list, topology_directory, kin_relation_dict)
+
+    return minimal_topology_list
+  end # if
+
   # step 2 ####################################################################
   result_topology_list, result_repl_rules_list = if method_to_find_momentum_shifts == :Canonicalization
-    nothing # TBD
+    construct_den_topology(Val(:Canonicalization), minimal_topology_list)
   elseif method_to_find_momentum_shifts == :PakAlgorithm
     construct_den_topology(
       Val(:PakAlgorithm), minimal_topology_list,
@@ -54,7 +82,6 @@ function construct_den_topology(
       find_external_momentum_shifts
     ) # end construct_den_topology
   end # if
-  covering_dict = Dict{FeynmanDenominatorCollection, Dict{Int, Dict{Basic, Basic}}}()
   for ii ∈ eachindex(result_topology_list)
     amp_repl_rules_dict = Dict{Int, Dict{Basic, Basic}}()
     result_repl_rules = result_repl_rules_list[ii]
@@ -67,11 +94,23 @@ function construct_den_topology(
 
   # step 3 ####################################################################
   # complete topologies #######################################################
-  if method_to_find_momentum_shifts == :Canonicalization
-    nothing # TBD
-  elseif method_to_find_momentum_shifts == :PakAlgorithm
-    nothing # TBD
+  if complete_topologies
+    if method_to_find_momentum_shifts == :Canonicalization
+      for (ii, topology) ∈ enumerate(result_topology_list)
+        @info "Completing topology #$ii (total: $(length(result_topology_list)))."
+        is_complete_topology(topology) && continue
+        complete_topology = make_complete_topology(Val(:Canonicalization), topology)
+        covering_dict[complete_topology] = deepcopy(covering_dict[topology])
+        delete!(covering_dict, topology)
+        result_topology_list[ii] = complete_topology
+      end # for (ii, topology)
+    elseif method_to_find_momentum_shifts == :PakAlgorithm
+      @warn "Do not support to complete topologies with Pak algorithm yet."
+      nothing
+    end # if
   end # if
+  # @show length(result_topology_list)
+  # @show length(covering_dict)
   # end step 3 ################################################################
 
   # recheck momentum shifts #####################################################
@@ -83,13 +122,15 @@ function construct_den_topology(
       for (jj, den_collection) ∈ enumerate(ds_list)
         @info "Checking if the constructed topology #$ii (total: $(length(result_topology_list))) covering the original topology #$jj (total: $(length(ds_list)))."
         if method_to_find_momentum_shifts == :Canonicalization
-          nothing # TBD
+          momentum_shifts = find_Canonicalization_momentum_shifts(
+            topology, den_collection
+          ) # end find_Canonicalization_momentum_shifts
         elseif method_to_find_momentum_shifts == :PakAlgorithm
           momentum_shifts = find_Pak_momentum_shifts(
             topology, den_collection;
             SP_replacements=kin_relation_dict,
             find_external_momentum_shifts=find_external_momentum_shifts
-          )
+          ) # end find_Pak_momentum_shifts
           isnothing(momentum_shifts) && continue
           repl_rules[jj] = momentum_shifts
         end # if
@@ -104,21 +145,7 @@ function construct_den_topology(
   end # if
   # end recheck momentum shifts ###############################################
 
-
   # write topology ############################################################
-  top_dir_list = splitpath(amp_dir)
-  topology_name = if method_to_find_momentum_shifts == :Canonicalization
-    "Canonicalization_topologies"
-  elseif method_to_find_momentum_shifts == :PakAlgorithm
-    "Pak_topologies"
-  end # if
-  top_dir_list[end] = if endswith(top_dir_list[end], "amplitudes")
-    replace(top_dir_list[end], "amplitudes" => topology_name)
-  else
-    top_dir_list[end] *= "_" * topology_name
-  end
-  topology_directory = joinpath(top_dir_list)
-  bk_mkdir(topology_directory)
   write_topology(covering_dict, amp_filename_list, topology_directory, kin_relation_dict)
   # end write topology ########################################################
 
@@ -303,6 +330,19 @@ function minimize_topology_list_directly(
   return result_den_collection_list, result_covering_indices
 end # function minimize_topology_list_directly
 
+function is_complete_topology(den_collection::FeynmanDenominatorCollection)::Bool
+  loop_momenta = map(Basic, den_collection.loop_momenta)
+  n_loop = length(loop_momenta)
+  independent_external_momenta = map(Basic, den_collection.external_momenta[begin:end-1])
+  n_ind_ext = length(independent_external_momenta)
+  # den_list = map(Basic, den_collection.denominators)
+  n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
+
+  return calculate_denominator_collection_rank(
+    loop_momenta, independent_external_momenta, den_collection.denominators
+  ) == n_sp
+end # function is_complete_topology
+
 function calculate_denominator_collection_rank(
   den_collection::FeynmanDenominatorCollection
 )::Int
@@ -419,35 +459,3 @@ function write_topology(
     counter += 1
   end # for
 end # function write_topology
-
-function relative_path(base_path::String, target_path::String)::String
-  @assert ispath(base_path) "Got non-existent path: $base_path."
-  @assert ispath(target_path) "Got non-existent path: $target_path."
-
-  base_abspath = abspath(base_path)
-  target_abspath = abspath(target_path)
-  if base_abspath == target_abspath
-    isfile(base_abspath) && return joinpath(".", basename(base_abspath))
-    isdir(base_abspath) && return "."
-  end # if
-
-  base_abspath_list = splitpath(base_abspath)
-  target_abspath_list = splitpath(target_abspath)
-
-  while true
-    isempty(base_abspath_list) && return joinpath(".", target_abspath_list...)
-    isempty(target_abspath_list) && break
-    first(base_abspath_list) == first(target_abspath_list) || break
-    popfirst!(base_abspath_list)
-    popfirst!(target_abspath_list)
-  end # while
-
-  result_path_list = if isfile(base_abspath)
-    vcat([".." for _ ∈ base_abspath_list[begin:end-1]], target_abspath_list)
-  else
-    @assert isdir(base_abspath)
-    vcat([".." for _ ∈ base_abspath_list], target_abspath_list)
-  end # if
-
-  return joinpath(result_path_list)
-end # function relative_path
