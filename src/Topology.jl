@@ -16,7 +16,10 @@ function construct_den_topology(
 )::Vector{FeynmanDenominatorCollection}
 
   # check options #############################################################
-  @assert method_to_find_momentum_shifts ∈ [:Canonicalization, :PakAlgorithm] "Do not support method $method_to_find_momentum_shifts to find momentum shifts."
+  @assert method_to_find_momentum_shifts ∈ [
+    :Canonicalization,
+    :PakAlgorithm
+  ] "Do not support method $method_to_find_momentum_shifts to find momentum shifts."
 
   # use_reference_topology &&
   #   return construct_den_topology_with_reference_topology(
@@ -41,6 +44,8 @@ function construct_den_topology(
     "Canonicalization_topologies"
   elseif method_to_find_momentum_shifts == :PakAlgorithm
     "Pak_topologies"
+  elseif method_to_find_momentum_shifts == :DeepPakAlgorithm
+    "deep_Pak_topologies"
   end # if
   top_dir_list[end] = if endswith(top_dir_list[end], "amplitudes")
     replace(top_dir_list[end], "amplitudes" => topology_name)
@@ -76,7 +81,7 @@ function construct_den_topology(
         neq_to_be_chosen_den_collect_list
       ) # end filter!
       isempty(neq_to_be_chosen_den_collect_list) && break
-      to_be_chosen_den_collect = pop!(neq_to_be_chosen_den_collect_list)
+      to_be_chosen_den_collect = popfirst!(neq_to_be_chosen_den_collect_list)
     end # while
 
     push!(init_den_collect_list, to_be_chosen_den_collect)
@@ -89,7 +94,7 @@ function construct_den_topology(
     deleteat!(tmp_den_collect_indices, to_be_removed_positions)
     deleteat!(tmp_den_collect_list, to_be_removed_positions)
   end # while
-  @info "Done for removing redundant topologies and got $(length(init_den_collect_list)) topologies."
+  @info "Got $(length(init_den_collect_list)) initial topologies."
   # end step 0 ################################################################
 
   if !check_momentum_shifts
@@ -99,12 +104,15 @@ function construct_den_topology(
     ) # end minimize_topology_list_directly
     @info "Done and got $(length(greedy_den_collect_list)) topologies."
 
-    @info "Constructing complete topologies."
-    complete_topologies = if method_to_find_momentum_shifts == :Canonicalization
-      make_complete_topology.(Val(:Canonicalization), greedy_den_collect_list)
-    else
-      @warn "Do not support to complete topologies with Pak algorithm yet."
-      greedy_den_collect_list
+    complete_topologies = greedy_den_collect_list
+    if return_complete_topology
+      @info "Constructing complete topologies."
+      complete_topologies = if method_to_find_momentum_shifts == :Canonicalization
+        make_complete_topology.(Val(:Canonicalization), greedy_den_collect_list)
+      else
+        @warn "Do not support to complete topologies with Pak algorithm yet."
+        greedy_den_collect_list
+      end # if
     end # if
 
     for (ii, topology) ∈ enumerate(complete_topologies)
@@ -117,46 +125,56 @@ function construct_den_topology(
     return complete_topologies
   end # if
 
+  # step 1 ####################################################################
+  # find momentum shifts #######################################################
+  first_shifted_den_collect_list, first_shifted_repl_rules_list =
+    if method_to_find_momentum_shifts == :Canonicalization
+      construct_den_topology(Val(:Canonicalization), init_den_collect_list)
+    elseif method_to_find_momentum_shifts == :PakAlgorithm
+      construct_den_topology(
+        Val(:PakAlgorithm), init_den_collect_list,
+        kin_relation_dict,
+        find_external_momentum_shifts
+      ) # end construct_den_topology
+    end # if
+  # end step 1 ################################################################
+
   # step 2 ####################################################################
-  result_topology_list, result_repl_rules_list = if method_to_find_momentum_shifts == :Canonicalization
-    construct_den_topology(Val(:Canonicalization), minimal_topology_list)
-  elseif method_to_find_momentum_shifts == :PakAlgorithm
-    construct_den_topology(
-      Val(:PakAlgorithm), minimal_topology_list,
-      kin_relation_dict,
-      find_external_momentum_shifts
-    ) # end construct_den_topology
-  end # if
-  for ii ∈ eachindex(result_topology_list)
-    amp_repl_rules_dict = Dict{Int, Dict{Basic, Basic}}()
-    result_repl_rules = result_repl_rules_list[ii]
-    for jj ∈ keys(result_repl_rules), kk ∈ covering_indices[jj]
-      amp_repl_rules_dict[kk] = result_repl_rules[jj]
-    end # for kk
-    covering_dict[result_topology_list[ii]] = amp_repl_rules_dict
-  end # for ii
+  # greedy minimize topologies ################################################
+  @info "Minimalizing the initial topologies."
+  greedy_den_collect_list, greedy_covering_indices = minimize_topology_list_directly(
+    Val(method_to_find_momentum_shifts), first_shifted_den_collect_list
+  ) # end minimal_topology_list
+  @info "Done and got $(length(greedy_den_collect_list)) topologies."
   # end step 2 ################################################################
 
   # step 3 ####################################################################
-  # complete topologies #######################################################
-  if complete_topologies
+  # find momentum shifts again ################################################
+  second_shifted_den_collect_list, second_shifted_repl_rules_list =
     if method_to_find_momentum_shifts == :Canonicalization
-      for (ii, topology) ∈ enumerate(result_topology_list)
-        @info "Completing topology #$ii (total: $(length(result_topology_list)))."
-        is_complete_topology(topology) && continue
-        complete_topology = make_complete_topology(Val(:Canonicalization), topology)
-        covering_dict[complete_topology] = deepcopy(covering_dict[topology])
-        delete!(covering_dict, topology)
-        result_topology_list[ii] = complete_topology
-      end # for (ii, topology)
+      construct_den_topology(Val(:Canonicalization), greedy_den_collect_list)
     elseif method_to_find_momentum_shifts == :PakAlgorithm
-      @warn "Do not support to complete topologies with Pak algorithm yet."
-      nothing
+      construct_den_topology(
+        Val(:PakAlgorithm), greedy_den_collect_list,
+        kin_relation_dict,
+        find_external_momentum_shifts
+      ) # end construct_den_topology
+    end # if
+  # end step 3 ################################################################
+
+  # step 4 ####################################################################
+  # complete topologies #######################################################
+  complete_topologies = second_shifted_den_collect_list
+  if return_complete_topology
+    @info "Constructing complete topologies."
+    complete_topologies = if method_to_find_momentum_shifts == :Canonicalization
+      make_complete_topology.(Val(:Canonicalization), second_shifted_den_collect_list)
+    else
+      @warn "Do not support to complete topologies with (deep) Pak algorithm yet."
+      second_shifted_den_collect_list
     end # if
   end # if
-  # @show length(result_topology_list)
-  # @show length(covering_dict)
-  # end step 3 ################################################################
+  # end step 4 ################################################################
 
   # recheck momentum shifts #####################################################
   if recheck_momentum_shifts
@@ -295,24 +313,7 @@ function minimize_topology_list_directly(
 
   n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
 
-  # original_den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
   den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
-  # end initial information ###################################################
-
-  # den_list_list = Vector{FeynmanDenominator}[]
-  # original_den_index_list = (collect ∘ eachindex)(original_den_list_list)
-  # covering_indices = Vector{Int}[]
-  # while !isempty(original_den_list_list)
-  #   _, index = findmax(length, original_den_list_list)
-  #   target_den_list = original_den_list_list[index]
-  #   push!(den_list_list, target_den_list)
-
-  #   tmp_indices = findall(den_list -> den_list ⊆ target_den_list, original_den_list_list)
-  #   push!(covering_indices, original_den_index_list[tmp_indices])
-  #   deleteat!(original_den_list_list, tmp_indices)
-
-  #   filter!(den_list -> den_list ⊈ target_den_list, original_den_list_list)
-  # end # while
 
   graded_indices_list = [ [ [ii] for ii ∈ eachindex(den_list_list) ] ]
   previous_indices_list = last(graded_indices_list)
@@ -325,7 +326,7 @@ function minimize_topology_list_directly(
     # this_union_den_list = Vector{FeynmanDenominator}[]
     for one_indices ∈ previous_indices_list
       for one_index ∈ (last(one_indices) + 1):n_den_collect
-        tmp_indices = (sort! ∘ union)(one_indices, [one_index])
+        tmp_indices = vcat(one_indices, [one_index])
         tmp_union_den = reduce(union, den_list_list[tmp_indices])
         length(tmp_union_den) ≤ n_sp || continue
         calculate_denominator_collection_rank(
@@ -344,7 +345,6 @@ function minimize_topology_list_directly(
 
   final_indices_list = (get_greedy_cover ∘ pop!)(graded_indices_list)
   while !isempty(graded_indices_list)
-    # @show final_indices_list
     tmp_indices_list = pop!(graded_indices_list)
     covered_indices = reduce(union, final_indices_list)
     to_be_added_indices_list = Vector{Int}[]
@@ -357,11 +357,9 @@ function minimize_topology_list_directly(
     final_indices_list = append!(final_indices_list, to_be_added_indices_list)
   end
 
-  # @show final_indices_list
   @assert (isempty ∘ symdiff)(reduce(union, final_indices_list), eachindex(den_list_list))
 
   result_den_collection_list = FeynmanDenominatorCollection[]
-  # result_covering_indices = Vector{Int}[]
   for indices ∈ final_indices_list
     den_list = reduce(union, den_list_list[indices])
     push!(result_den_collection_list,
@@ -370,11 +368,9 @@ function minimize_topology_list_directly(
         check_validity=false
       )
     ) # end push!
-    # push!(result_covering_indices, reduce(union, covering_indices[indices]))
   end # for indices
 
   return result_den_collection_list, final_indices_list
-  # return result_den_collection_list, result_covering_indices
 end # function minimize_topology_list_directly
 
 function is_complete_topology(den_collection::FeynmanDenominatorCollection)::Bool
@@ -382,7 +378,6 @@ function is_complete_topology(den_collection::FeynmanDenominatorCollection)::Boo
   n_loop = length(loop_momenta)
   independent_external_momenta = map(Basic, den_collection.external_momenta[begin:end-1])
   n_ind_ext = length(independent_external_momenta)
-  # den_list = map(Basic, den_collection.denominators)
   n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
 
   return calculate_denominator_collection_rank(
