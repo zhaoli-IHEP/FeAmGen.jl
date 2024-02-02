@@ -31,7 +31,7 @@ function construct_den_topology(
   # end check options #########################################################
 
   # init ######################################################################
-  amp_filename_list, ds_list, kin_relation_dict  = read_loop_denominators(
+  amp_filename_list, amp_den_collect_list, kin_relation_dict  = read_loop_denominators(
     Val(:AmplitudeDirectory), amp_dir, check_all_kinematic_relations
   )
   covering_dict = Dict{FeynmanDenominatorCollection, Dict{Int, Dict{Basic, Basic}}}()
@@ -51,25 +51,70 @@ function construct_den_topology(
   bk_mkdir(topology_directory)
   # end init ##################################################################
 
-  # step 1 ####################################################################
-  # construct a minimal set of Feynman integral topologies ####################
-  @info "Minimalizing the initial topologies."
-  minimal_topology_list, covering_indices = minimize_topology_list_directly(
-    Val(method_to_find_momentum_shifts), ds_list
-  ) # end minimal_topology_list
-  @info "Done and got $(length(minimal_topology_list)) initial topologies."
-  # end step 1 ################################################################
+  # step 0 ####################################################################
+  # ⊆, == #####################################################################
+  @info "Removing redundant topologies."
+  init_den_collect_list = FeynmanDenominatorCollection[]
+  tmp_den_collect_list = copy(amp_den_collect_list)
+  tmp_den_collect_indices = (collect ∘ eachindex)(tmp_den_collect_list)
+  init_covering_indices = Vector{Int}[]
+  while !isempty(tmp_den_collect_list)
+    _, index = findmax(length, tmp_den_collect_list)
+    to_be_chosen_den_collect = tmp_den_collect_list[index]
+
+    to_be_chosen_den_collect_list = filter(
+      den_collect -> length(den_collect) == length(to_be_chosen_den_collect),
+      tmp_den_collect_list
+    ) # end filter
+    while true
+      neq_to_be_chosen_den_collect_list = filter(
+        den_collect -> den_collect ≠ to_be_chosen_den_collect,
+        to_be_chosen_den_collect_list
+      ) # end filter
+      filter!(
+        den_collect -> den_collect ⊇ to_be_chosen_den_collect,
+        neq_to_be_chosen_den_collect_list
+      ) # end filter!
+      isempty(neq_to_be_chosen_den_collect_list) && break
+      to_be_chosen_den_collect = pop!(neq_to_be_chosen_den_collect_list)
+    end # while
+
+    push!(init_den_collect_list, to_be_chosen_den_collect)
+
+    to_be_removed_positions = findall(
+      den_collect -> den_collect ⊆ to_be_chosen_den_collect,
+      tmp_den_collect_list
+    ) # end findall
+    push!(init_covering_indices, tmp_den_collect_indices[to_be_removed_positions])
+    deleteat!(tmp_den_collect_indices, to_be_removed_positions)
+    deleteat!(tmp_den_collect_list, to_be_removed_positions)
+  end # while
+  @info "Done for removing redundant topologies and got $(length(init_den_collect_list)) topologies."
+  # end step 0 ################################################################
 
   if !check_momentum_shifts
-    @info "Do not check momentum shifts further."
+    @info "Minimizing the initial topologies without checking momentum shifts."
+    greedy_den_collect_list, greedy_covering_indices = minimize_topology_list_directly(
+      Val(method_to_find_momentum_shifts), init_den_collect_list
+    ) # end minimize_topology_list_directly
+    @info "Done and got $(length(greedy_den_collect_list)) topologies."
 
-    for (ii, topology) ∈ enumerate(minimal_topology_list)
-      covering_dict[topology] = Dict{Int, Dict{Basic, Basic}}(covering_indices[ii] .=> Dict{Basic, Basic}())
+    @info "Constructing complete topologies."
+    complete_topologies = if method_to_find_momentum_shifts == :Canonicalization
+      make_complete_topology.(Val(:Canonicalization), greedy_den_collect_list)
+    else
+      @warn "Do not support to complete topologies with Pak algorithm yet."
+      greedy_den_collect_list
+    end # if
+
+    for (ii, topology) ∈ enumerate(complete_topologies)
+      all_covering_indices = reduce(union, init_covering_indices[greedy_covering_indices[ii]])
+      covering_dict[topology] = Dict{Int, Dict{Basic, Basic}}(all_covering_indices .=> Ref(Dict{Basic, Basic}()))
     end # for (ii, topology)
 
     write_topology(covering_dict, amp_filename_list, topology_directory, kin_relation_dict)
 
-    return minimal_topology_list
+    return complete_topologies
   end # if
 
   # step 2 ####################################################################
@@ -250,23 +295,24 @@ function minimize_topology_list_directly(
 
   n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
 
-  original_den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
+  # original_den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
+  den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
   # end initial information ###################################################
 
-  den_list_list = Vector{FeynmanDenominator}[]
-  original_den_index_list = (collect ∘ eachindex)(original_den_list_list)
-  covering_indices = Vector{Int}[]
-  while !isempty(original_den_list_list)
-    _, index = findmax(length, original_den_list_list)
-    target_den_list = original_den_list_list[index]
-    push!(den_list_list, target_den_list)
+  # den_list_list = Vector{FeynmanDenominator}[]
+  # original_den_index_list = (collect ∘ eachindex)(original_den_list_list)
+  # covering_indices = Vector{Int}[]
+  # while !isempty(original_den_list_list)
+  #   _, index = findmax(length, original_den_list_list)
+  #   target_den_list = original_den_list_list[index]
+  #   push!(den_list_list, target_den_list)
 
-    tmp_indices = findall(den_list -> den_list ⊆ target_den_list, original_den_list_list)
-    push!(covering_indices, original_den_index_list[tmp_indices])
-    deleteat!(original_den_list_list, tmp_indices)
+  #   tmp_indices = findall(den_list -> den_list ⊆ target_den_list, original_den_list_list)
+  #   push!(covering_indices, original_den_index_list[tmp_indices])
+  #   deleteat!(original_den_list_list, tmp_indices)
 
-    filter!(den_list -> den_list ⊈ target_den_list, original_den_list_list)
-  end # while
+  #   filter!(den_list -> den_list ⊈ target_den_list, original_den_list_list)
+  # end # while
 
   graded_indices_list = [ [ [ii] for ii ∈ eachindex(den_list_list) ] ]
   previous_indices_list = last(graded_indices_list)
@@ -315,7 +361,7 @@ function minimize_topology_list_directly(
   @assert (isempty ∘ symdiff)(reduce(union, final_indices_list), eachindex(den_list_list))
 
   result_den_collection_list = FeynmanDenominatorCollection[]
-  result_covering_indices = Vector{Int}[]
+  # result_covering_indices = Vector{Int}[]
   for indices ∈ final_indices_list
     den_list = reduce(union, den_list_list[indices])
     push!(result_den_collection_list,
@@ -324,10 +370,11 @@ function minimize_topology_list_directly(
         check_validity=false
       )
     ) # end push!
-    push!(result_covering_indices, reduce(union, covering_indices[indices]))
+    # push!(result_covering_indices, reduce(union, covering_indices[indices]))
   end # for indices
 
-  return result_den_collection_list, result_covering_indices
+  return result_den_collection_list, final_indices_list
+  # return result_den_collection_list, result_covering_indices
 end # function minimize_topology_list_directly
 
 function is_complete_topology(den_collection::FeynmanDenominatorCollection)::Bool
@@ -448,7 +495,7 @@ function write_topology(
       write(f, "    covering amplitude files:\n")
       for (key, value) ∈ covering_dict
         write(f, "        $(relative_path(topology_outname, amp_file_list[key])):")
-        isempty(value) && write(f, "No momentum shifts required.")
+        isempty(value) && write(f, " No momentum shifts required.")
         write(f, "\n")
         for (k, v) ∈ value
           write(f, "            - $k => $v\n")

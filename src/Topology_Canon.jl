@@ -27,23 +27,24 @@ function minimize_topology_list_directly(
 
   n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
 
-  original_den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
+  # original_den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
+  den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
   # end initial information ###################################################
 
-  den_list_list = Vector{FeynmanDenominator}[]
-  original_den_index_list = (collect ∘ eachindex)(original_den_list_list)
-  covering_indices = Vector{Int}[]
-  while !isempty(original_den_list_list)
-    _, index = findmax(length, original_den_list_list)
-    target_den_list = original_den_list_list[index]
-    push!(den_list_list, target_den_list)
+  # den_list_list = Vector{FeynmanDenominator}[]
+  # original_den_index_list = (collect ∘ eachindex)(original_den_list_list)
+  # covering_indices = Vector{Int}[]
+  # while !isempty(original_den_list_list)
+  #   _, index = findmax(length, original_den_list_list)
+  #   target_den_list = original_den_list_list[index]
+  #   push!(den_list_list, target_den_list)
 
-    tmp_indices = findall(den_list -> den_list ⊆ target_den_list, original_den_list_list)
-    push!(covering_indices, original_den_index_list[tmp_indices])
-    deleteat!(original_den_list_list, tmp_indices)
+  #   tmp_indices = findall(den_list -> den_list ⊆ target_den_list, original_den_list_list)
+  #   push!(covering_indices, original_den_index_list[tmp_indices])
+  #   deleteat!(original_den_list_list, tmp_indices)
 
-    filter!(den_list -> den_list ⊈ target_den_list, original_den_list_list)
-  end # while
+  #   filter!(den_list -> den_list ⊈ target_den_list, original_den_list_list)
+  # end # while
 
   graded_indices_list = [ [ [ii] for ii ∈ eachindex(den_list_list) ] ]
   previous_indices_list = last(graded_indices_list)
@@ -110,7 +111,7 @@ function minimize_topology_list_directly(
   @assert (isempty ∘ symdiff)(reduce(union, final_indices_list), eachindex(den_list_list))
 
   result_den_collection_list = FeynmanDenominatorCollection[]
-  result_covering_indices = Vector{Int}[]
+  # result_covering_indices = Vector{Int}[]
   for indices ∈ final_indices_list
     den_list = reduce(union, den_list_list[indices])
     push!(result_den_collection_list,
@@ -119,10 +120,11 @@ function minimize_topology_list_directly(
         check_validity=false
       )
     ) # end push!
-    push!(result_covering_indices, reduce(union, covering_indices[indices]))
+    # push!(result_covering_indices, reduce(union, covering_indices[indices]))
   end # for indices
 
-  return result_den_collection_list, result_covering_indices
+  return result_den_collection_list, final_indices_list
+  # return result_den_collection_list, result_covering_indices
 end # function minimize_topology_list_directly
 
 function construct_den_topology(
