@@ -9,7 +9,7 @@ function construct_den_topology(
   # use_reference_topology::Bool=false,
   # reference_topology_directory::String="",
   # reference_topologies::Vector{FeynmanDenominatorCollection}=FeynmanDenominatorCollection[],
-  complete_topologies::Bool=true,
+  return_complete_topology::Bool=true,
   check_all_kinematic_relations::Bool=false,
   find_external_momentum_shifts::Bool=false,
   recheck_momentum_shifts::Bool=false
@@ -44,8 +44,6 @@ function construct_den_topology(
     "Canonicalization_topologies"
   elseif method_to_find_momentum_shifts == :PakAlgorithm
     "Pak_topologies"
-  elseif method_to_find_momentum_shifts == :DeepPakAlgorithm
-    "deep_Pak_topologies"
   end # if
   top_dir_list[end] = if endswith(top_dir_list[end], "amplitudes")
     replace(top_dir_list[end], "amplitudes" => topology_name)
@@ -176,14 +174,14 @@ function construct_den_topology(
   end # if
   # end step 4 ################################################################
 
-  # recheck momentum shifts #####################################################
+  # construct covering_dict ###################################################
+  covering_dict = Dict{FeynmanDenominatorCollection, Dict{Int, Dict{Basic, Basic}}}()
   if recheck_momentum_shifts
     @info "Re-checking all original topologies are covered by the constructed topologies."
-    covering_dict = Dict{FeynmanDenominatorCollection, Dict{Int, Dict{Basic, Basic}}}()
-    for (ii, topology) ∈ enumerate(result_topology_list)
+    for (ii, topology) ∈ enumerate(complete_topologies)
       repl_rules = Dict{Int, Dict{Basic, Basic}}()
-      for (jj, den_collection) ∈ enumerate(ds_list)
-        @info "Checking if the constructed topology #$ii (total: $(length(result_topology_list))) covering the original topology #$jj (total: $(length(ds_list)))."
+      for (jj, den_collection) ∈ enumerate(amp_den_collect_list)
+        @info "Checking if the constructed topology #$ii (total: $(length(result_topology_list))) covering the original topology #$jj (total: $(length(amp_den_collect_list)))."
         if method_to_find_momentum_shifts == :Canonicalization
           momentum_shifts = find_Canonicalization_momentum_shifts(
             topology, den_collection
@@ -199,20 +197,46 @@ function construct_den_topology(
         end # if
       end # for (jj, den_collection)
       covering_dict[topology] = repl_rules
-    end # for topology
+    end # for (ii, topology)
+  else
+    for (ii, topology) ∈ enumerate(complete_topologies)
+      tmp_dict = Dict{Int, Dict{Basic, Basic}}()
+      for (second_key, second_momentum_shifts) ∈ second_shifted_repl_rules_list[ii]
+        for greedy_covering_index ∈ greedy_covering_indices[second_key]
+          for (first_key, first_momentum_shifts) ∈ first_shifted_repl_rules_list[greedy_covering_index]
+            final_momentum_shifts = if isempty(first_momentum_shifts)
+              second_momentum_shifts
+            elseif isempty(second_momentum_shifts)
+              first_momentum_shifts
+            else
+              tmp_momentum_shifts = Dict{Basic, Basic}()
+              for (key, value) ∈ first_momentum_shifts
+                tmp_momentum_shifts[key] = (expand ∘ subs)(value, second_momentum_shifts)
+              end # for (key, value)
+              tmp_momentum_shifts
+            end # if
 
-    @assert (isempty ∘ symdiff)(
-      reduce(union, map(collect ∘ keys, (collect ∘ values)(covering_dict))),
-      eachindex(ds_list)
-    )
+            for amp_index ∈ init_covering_indices[first_key]
+              tmp_dict[amp_index] = final_momentum_shifts
+            end # for amp_index
+          end # for (first_key, first_momentum_shifts)
+        end # for greedy_covering_index
+      end # for (second_key, second_momentum_shifts)
+      covering_dict[topology] = tmp_dict
+    end # for (ii, topology)
   end # if
-  # end recheck momentum shifts ###############################################
+
+  @assert (isempty ∘ symdiff)(
+    reduce(union, map(collect ∘ keys, (collect ∘ values)(covering_dict))),
+    eachindex(amp_den_collect_list)
+  )
+  # end construct covering_dict ###############################################
 
   # write topology ############################################################
   write_topology(covering_dict, amp_filename_list, topology_directory, kin_relation_dict)
   # end write topology ########################################################
 
-  return result_topology_list
+  return complete_topologies
 end # function construct_topology
 
 function read_loop_denominators(
