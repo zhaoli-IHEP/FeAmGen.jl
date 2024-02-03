@@ -170,13 +170,11 @@ end # function normalize_loop_mom
 
 
 #########################################################
-# Created by Quan-feng Wu on Feb. 16 2023
-# Modified by Quan-feng Wu on Jan. 11 2024
+# Created by Quan-feng Wu on Jan. 31 2024
 function gen_loop_mom_canon_map(
     mom_list::Vector{Basic}
 )::Dict{Basic,Basic}
 #########################################################
-
   # get information
   tmp_q_list = get_loop_momenta( mom_list )
   k_list = get_ext_momenta( mom_list )
@@ -186,6 +184,29 @@ function gen_loop_mom_canon_map(
   !isempty(diff_q_list) && @warn """
   Add $(join(diff_q_list, ", ")) to the loop momenta list.
   """
+
+  return gen_loop_mom_canon_map( mom_list, q_list, k_list )
+end
+
+#########################################################
+# Created by Quan-feng Wu on Feb. 16 2023
+# Modified by Quan-feng Wu on Jan. 11 2024
+function gen_loop_mom_canon_map(
+    mom_list::Vector{Basic},
+    q_list::Vector{Basic},
+    k_list::Vector{Basic}
+)::Dict{Basic,Basic}
+#########################################################
+
+  # get information
+  # tmp_q_list = get_loop_momenta( mom_list )
+  # k_list = get_ext_momenta( mom_list )
+  n_loop = length( q_list )
+  # q_list = [ Basic("q$ii") for ii ∈ 1:n_loop ]
+  # diff_q_list = setdiff( q_list, tmp_q_list )
+  # !isempty(diff_q_list) && @warn """
+  # Add $(join(diff_q_list, ", ")) to the loop momenta list.
+  # """
   q_null_dict = Dict( q_list .=> zero(Basic) )
   preferred_flag = n_loop ∈ keys(preferred_vac_mom_dict())
 

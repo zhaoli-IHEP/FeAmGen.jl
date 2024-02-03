@@ -2,3 +2,5 @@
 seed*.yaml
 
 *tmp*
+
+*.log

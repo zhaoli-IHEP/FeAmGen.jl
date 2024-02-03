@@ -424,3 +424,37 @@ function get_diagram_index( file_name::String )::Int
   index_str_range = findfirst(r"^[1-9]\d*", str)
   return  parse(Int, str[index_str_range])
 end
+
+###########################################
+function relative_path(base_path::String, target_path::String)::String
+###########################################
+  @assert ispath(base_path) "Got non-existent path: $base_path."
+  @assert ispath(target_path) "Got non-existent path: $target_path."
+
+  base_abspath = abspath(base_path)
+  target_abspath = abspath(target_path)
+  if base_abspath == target_abspath
+    isfile(base_abspath) && return joinpath(".", basename(base_abspath))
+    isdir(base_abspath) && return "."
+  end # if
+
+  base_abspath_list = splitpath(base_abspath)
+  target_abspath_list = splitpath(target_abspath)
+
+  while true
+    isempty(base_abspath_list) && return joinpath(".", target_abspath_list...)
+    isempty(target_abspath_list) && break
+    first(base_abspath_list) == first(target_abspath_list) || break
+    popfirst!(base_abspath_list)
+    popfirst!(target_abspath_list)
+  end # while
+
+  result_path_list = if isfile(base_abspath)
+    vcat([".." for _ ∈ base_abspath_list[begin:end-1]], target_abspath_list)
+  else
+    @assert isdir(base_abspath)
+    vcat([".." for _ ∈ base_abspath_list], target_abspath_list)
+  end # if
+
+  return joinpath(result_path_list)
+end # function relative_path
