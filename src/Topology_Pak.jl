@@ -1,5 +1,5 @@
-function construct_den_topology(
-  ::Val{:PakAlgorithm},
+function construct_topology(
+  # ::Val{:PakAlgorithm},
   den_collection_list::Vector{FeynmanDenominatorCollection},
   kinematic_relations::Dict{Basic, Basic},
   find_external_momentum_shifts::Bool

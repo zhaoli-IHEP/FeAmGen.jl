@@ -103,66 +103,6 @@ function minimize_topology_list_directly(
   return result_den_collection_list, final_indices_list
 end # function minimize_topology_list_directly
 
-function construct_den_topology(
-  ::Val{:Canonicalization},
-  den_collection_list::Vector{FeynmanDenominatorCollection}
-)::Tuple{
-  Vector{FeynmanDenominatorCollection},
-  Vector{Dict{Int, Dict{Basic, Basic}}}
-}
-  result_den_collection_list = FeynmanDenominatorCollection[]
-  result_repl_rules_list = Dict{Int, Dict{Basic, Basic}}[]
-  remaining_indices = (collect ∘ eachindex)(den_collection_list)
-
-  @info "Minimalizing the topologies with Canonicalization algorithm."
-  while !isempty(remaining_indices)
-    @info "Number of remaining topologies: $(length(remaining_indices))."
-
-    _, index_index = findmax(length, den_collection_list[remaining_indices])
-    largest_index = remaining_indices[index_index]
-    while true
-      tmp_den_collection = den_collection_list[largest_index]
-      tmp_index_index = findnext(
-        index -> tmp_den_collection ≠ den_collection_list[index] &&
-          !is_Canonicalization_equivalent(
-            tmp_den_collection, den_collection_list[index]
-          ) && den_collection_list[index] ⊇ tmp_den_collection ||
-          check_Canonicalization_covering(
-            den_collection_list[index], tmp_den_collection
-          ),
-        remaining_indices, index_index + 1
-      )
-      isnothing(tmp_index_index) && break
-      index_index, largest_index = tmp_index_index, remaining_indices[tmp_index_index]
-    end # while
-
-    key_collection = den_collection_list[largest_index]
-    repl_rules_list = Vector{Union{Dict{Basic, Basic}, Nothing}}(undef, length(remaining_indices))
-    for (ii, index) ∈ enumerate(remaining_indices)
-      target_collection = den_collection_list[index]
-      if index == largest_index || key_collection ⊇ target_collection
-        repl_rules_list[ii] = Dict{Basic, Basic}() # do not check the same topology or directly sub-topology
-        continue
-      end # if
-      @info "Checking $largest_index covering: $(ii) / $(length(remaining_indices))."
-      repl_rules_list[ii] = find_Canonicalization_momentum_shifts(
-        key_collection, target_collection
-      ) # end find_Canonicalization_momentum_shifts
-    end # for (ii, index)
-
-    indices = findall(!isnothing, repl_rules_list)
-    push!(result_den_collection_list, key_collection)
-    push!(result_repl_rules_list,
-      Dict{Int, Dict{Basic, Basic}}(remaining_indices[ii] => repl_rules_list[ii] for ii ∈ indices)
-    ) # end push!
-    deleteat!(remaining_indices, indices)
-  end # while
-
-  @info "Constructed $(length(result_den_collection_list)) topologies."
-
-  return result_den_collection_list, result_repl_rules_list
-end # function construct_den_topology
-
 function make_complete_topology(
   ::Val{:Canonicalization},
   topology::FeynmanDenominatorCollection
@@ -231,51 +171,7 @@ function make_complete_topology(
     q_list, external_momenta, new_denominator_list;
     check_validity=false
   ) # end FeynmanDenominatorCollection
-end
-
-function is_Canonicalization_equivalent(
-  d1::FeynmanDenominatorCollection,
-  d2::FeynmanDenominatorCollection
-)::Bool
-  length(d1) == length(d2) || return false
-  loop_momenta_number(d1) == loop_momenta_number(d2) || return false
-
-  canonical_d1 = canonicalize_denominator_collection(d1)
-  canonical_d2 = canonicalize_denominator_collection(d2)
-
-  return canonical_d1 == canonical_d2
-end # function is_Canonicalization_equivalent
-
-check_Canonicalization_covering(
-  d1::FeynmanDenominatorCollection,
-  d2::FeynmanDenominatorCollection
-)::Bool = (!isnothing ∘ find_Canonicalization_momentum_shifts)(d1, d2)
-
-function find_Canonicalization_momentum_shifts(
-  d1::FeynmanDenominatorCollection,
-  d2::FeynmanDenominatorCollection
-)::Union{Dict{Basic, Basic}, Nothing}
-  n_d1 = length(d1)
-  n_d2 = length(d2)
-  n_d1 ≥ n_d2 || return nothing
-  if loop_momenta_number(d1) ≠ loop_momenta_number(d2)
-    @warn "Do not support different loop momenta number: ($(loop_momenta_number(d1_collection)) vs $(loop_momenta_number(d2_collection)))."
-    return nothing
-  end # if
-  if external_momenta_number(d1) ≠ external_momenta_number(d2)
-    @warn "Do not support different external momenta number: ($(external_momenta_number(d1_collection)) vs $(external_momenta_number(d2_collection)))."
-    return nothing
-  end # if
-
-  canonical_d2, d2_momentum_shifts = canonicalize_denominator_collection(d2; return_momentum_shifts=true)
-  for selected_indices ∈ combinations(1:n_d1, n_d2)
-    sub_d1 = get_sub_collection(d1, selected_indices)
-    canonical_sub_d1 = canonicalize_denominator_collection(sub_d1)
-    canonical_sub_d1 == canonical_d2 && return d2_momentum_shifts
-  end # for selected_indices
-
-  return nothing
-end # function find_Canonicalization_momentum_shifts
+end # function make_complete_topology
 
 function canonicalize_denominator_collection(
   denominator_collection::FeynmanDenominatorCollection;

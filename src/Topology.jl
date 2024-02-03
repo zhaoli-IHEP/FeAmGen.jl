@@ -126,15 +126,11 @@ function construct_den_topology(
   # step 1 ####################################################################
   # find momentum shifts #######################################################
   first_shifted_den_collect_list, first_shifted_repl_rules_list =
-    if method_to_find_momentum_shifts == :Canonicalization
-      construct_den_topology(Val(:Canonicalization), init_den_collect_list)
-    elseif method_to_find_momentum_shifts == :PakAlgorithm
-      construct_den_topology(
-        Val(:PakAlgorithm), init_den_collect_list,
-        kin_relation_dict,
-        find_external_momentum_shifts
-      ) # end construct_den_topology
-    end # if
+    construct_topology(
+      init_den_collect_list,
+      kin_relation_dict,
+      find_external_momentum_shifts
+    ) # end construct_den_topology
   # end step 1 ################################################################
 
   # step 2 ####################################################################
@@ -149,15 +145,11 @@ function construct_den_topology(
   # step 3 ####################################################################
   # find momentum shifts again ################################################
   second_shifted_den_collect_list, second_shifted_repl_rules_list =
-    if method_to_find_momentum_shifts == :Canonicalization
-      construct_den_topology(Val(:Canonicalization), greedy_den_collect_list)
-    elseif method_to_find_momentum_shifts == :PakAlgorithm
-      construct_den_topology(
-        Val(:PakAlgorithm), greedy_den_collect_list,
-        kin_relation_dict,
-        find_external_momentum_shifts
-      ) # end construct_den_topology
-    end # if
+    construct_topology(
+      greedy_den_collect_list,
+      kin_relation_dict,
+      find_external_momentum_shifts
+    ) # end construct_den_topology
   # end step 3 ################################################################
 
   # step 4 ####################################################################
@@ -345,9 +337,7 @@ function minimize_topology_list_directly(
   n_den_collect = length(den_list_list)
   counter = n_den_collect - 1
   while counter > 0
-    # @show counter
     this_indices_list = Vector{Int}[]
-    # this_union_den_list = Vector{FeynmanDenominator}[]
     for one_indices ∈ previous_indices_list
       for one_index ∈ (last(one_indices) + 1):n_den_collect
         tmp_indices = vcat(one_indices, [one_index])
