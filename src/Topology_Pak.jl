@@ -18,24 +18,24 @@ function construct_topology(
     _, index_index = findmax(length, den_collection_list[remaining_indices])
     largest_index = remaining_indices[index_index]
     largest_den_collection = den_collection_list[largest_index]
-    for ii ∈ (index_index+1):length(remaining_indices)
-      @info "Checking the largest index: $ii / $(length(remaining_indices))."
-      index = remaining_indices[ii]
-      tmp_den_collection = den_collection_list[index]
-      tmp_den_collection == largest_den_collection && continue
-      is_Pak_equivalent(
-        tmp_den_collection, largest_den_collection;
-        SP_replacements=kinematic_relations
-      ) && continue
-      tmp_den_collection ⊇ largest_den_collection ||
-        check_Pak_covering(
-          tmp_den_collection, largest_den_collection;
-          SP_replacements=kinematic_relations
-        ) || continue
-      @info "Found a larger index: $ii / $(length(remaining_indices))."
-      largest_index = index
-      largest_den_collection = tmp_den_collection
-    end # for index
+    # for ii ∈ (index_index+1):length(remaining_indices)
+    #   @info "Checking the largest index: $ii / $(length(remaining_indices))."
+    #   index = remaining_indices[ii]
+    #   tmp_den_collection = den_collection_list[index]
+    #   tmp_den_collection == largest_den_collection && continue
+    #   is_Pak_equivalent(
+    #     tmp_den_collection, largest_den_collection;
+    #     SP_replacements=kinematic_relations
+    #   ) && continue
+    #   tmp_den_collection ⊇ largest_den_collection ||
+    #     check_Pak_covering(
+    #       tmp_den_collection, largest_den_collection;
+    #       SP_replacements=kinematic_relations
+    #     ) || continue
+    #   @info "Found a larger index: $ii / $(length(remaining_indices))."
+    #   largest_index = index
+    #   largest_den_collection = tmp_den_collection
+    # end # for ii
 
     repl_rules_list = Vector{Union{Dict{Basic, Basic}, Nothing}}(undef, length(remaining_indices))
     for (ii, index) ∈ enumerate(remaining_indices)
