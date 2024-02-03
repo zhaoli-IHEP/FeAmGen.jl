@@ -27,7 +27,7 @@ import FORM_jll
 # Main APIs
 export digest_seed_proc
 export generate_amp 
-export construct_den_topology, construct_topology
+export construct_den_topology
 
 # Extra important functionals
 export canonicalize_amp
