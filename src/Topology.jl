@@ -4,7 +4,7 @@ include("Topology_Pak.jl")
 
 function construct_den_topology(
   amp_dir::String;
-  method_to_find_momentum_shifts::Symbol=:Canonicalization, # :Canonicalization or :PakAlgorithm
+  mode::Symbol=:Canonicalization, # :Canonicalization or :PakAlgorithm
   check_momentum_shifts::Bool=true,
   # use_reference_topology::Bool=false,
   # reference_topology_directory::String="",
@@ -16,15 +16,15 @@ function construct_den_topology(
 )::Vector{FeynmanDenominatorCollection}
 
   # check options #############################################################
-  @assert method_to_find_momentum_shifts ∈ [
+  @assert mode ∈ [
     :Canonicalization,
     :PakAlgorithm
-  ] "Do not support method $method_to_find_momentum_shifts to find momentum shifts."
+  ] "Do not support mode $mode."
 
   # use_reference_topology &&
   #   return construct_den_topology_with_reference_topology(
   #     amp_dir;
-  #     method_to_find_momentum_shifts=method_to_find_momentum_shifts,
+  #     mode=mode,
   #     check_momentum_shifts=check_momentum_shifts,
   #     reference_topology_directory=reference_topology_directory,
   #     reference_topologies=reference_topologies,
@@ -40,9 +40,9 @@ function construct_den_topology(
   covering_dict = Dict{FeynmanDenominatorCollection, Dict{Int, Dict{Basic, Basic}}}()
 
   top_dir_list = splitpath(amp_dir)
-  topology_name = if method_to_find_momentum_shifts == :Canonicalization
+  topology_name = if mode == :Canonicalization
     "Canonicalization_topologies"
-  elseif method_to_find_momentum_shifts == :PakAlgorithm
+  elseif mode == :PakAlgorithm
     "Pak_topologies"
   end # if
   top_dir_list[end] = if endswith(top_dir_list[end], "amplitudes")
@@ -98,14 +98,14 @@ function construct_den_topology(
   if !check_momentum_shifts
     @info "Minimizing the initial topologies without checking momentum shifts."
     greedy_den_collect_list, greedy_covering_indices = minimize_topology_list_directly(
-      Val(method_to_find_momentum_shifts), init_den_collect_list
+      Val(mode), init_den_collect_list
     ) # end minimize_topology_list_directly
     @info "Done and got $(length(greedy_den_collect_list)) topologies."
 
     complete_topologies = greedy_den_collect_list
     if return_complete_topology
       @info "Constructing complete topologies."
-      complete_topologies = if method_to_find_momentum_shifts == :Canonicalization
+      complete_topologies = if mode == :Canonicalization
         make_complete_topology.(Val(:Canonicalization), greedy_den_collect_list)
       else
         @warn "Do not support to complete topologies with Pak algorithm yet."
@@ -137,7 +137,7 @@ function construct_den_topology(
   # greedy minimize topologies ################################################
   @info "Minimalizing the initial topologies."
   greedy_den_collect_list, greedy_covering_indices = minimize_topology_list_directly(
-    Val(method_to_find_momentum_shifts), first_shifted_den_collect_list
+    Val(mode), first_shifted_den_collect_list
   ) # end minimal_topology_list
   @info "Done and got $(length(greedy_den_collect_list)) topologies."
   # end step 2 ################################################################
@@ -157,7 +157,7 @@ function construct_den_topology(
   complete_topologies = second_shifted_den_collect_list
   if return_complete_topology
     @info "Constructing complete topologies."
-    complete_topologies = if method_to_find_momentum_shifts == :Canonicalization
+    complete_topologies = if mode == :Canonicalization
       make_complete_topology.(Val(:Canonicalization), second_shifted_den_collect_list)
     else
       @warn "Do not support to complete topologies with (deep) Pak algorithm yet."
@@ -174,11 +174,11 @@ function construct_den_topology(
       repl_rules = Dict{Int, Dict{Basic, Basic}}()
       for (jj, den_collection) ∈ enumerate(amp_den_collect_list)
         @info "Checking if the constructed topology #$ii (total: $(length(result_topology_list))) covering the original topology #$jj (total: $(length(amp_den_collect_list)))."
-        if method_to_find_momentum_shifts == :Canonicalization
+        if mode == :Canonicalization
           momentum_shifts = find_Canonicalization_momentum_shifts(
             topology, den_collection
           ) # end find_Canonicalization_momentum_shifts
-        elseif method_to_find_momentum_shifts == :PakAlgorithm
+        elseif mode == :PakAlgorithm
           momentum_shifts = find_Pak_momentum_shifts(
             topology, den_collection;
             SP_replacements=kin_relation_dict,
