@@ -21,6 +21,9 @@ function construct_den_topology(
     :PakAlgorithm
   ] "Do not support mode $mode."
 
+  find_external_momentum_shifts = mode == :PakAlgorithm ?
+    find_external_momentum_shifts : false
+
   # use_reference_topology &&
   #   return construct_den_topology_with_reference_topology(
   #     amp_dir;
@@ -175,8 +178,10 @@ function construct_den_topology(
       for (jj, den_collection) ∈ enumerate(amp_den_collect_list)
         @info "Checking if the constructed topology #$ii (total: $(length(result_topology_list))) covering the original topology #$jj (total: $(length(amp_den_collect_list)))."
         if mode == :Canonicalization
-          momentum_shifts = find_Canonicalization_momentum_shifts(
-            topology, den_collection
+          momentum_shifts = find_Pak_momentum_shifts(
+            topology, den_collection;
+            SP_replacements=kin_relation_dict,
+            find_external_momentum_shifts=false
           ) # end find_Canonicalization_momentum_shifts
         elseif mode == :PakAlgorithm
           momentum_shifts = find_Pak_momentum_shifts(
@@ -229,7 +234,7 @@ function construct_den_topology(
   # end write topology ########################################################
 
   return complete_topologies
-end # function construct_topology
+end # function construct_den_topology
 
 function read_loop_denominators(
   ::Val{:AmplitudeDirectory},
