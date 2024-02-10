@@ -477,16 +477,35 @@ function generate_kin_relation( graph_list::Vector{Graph} )::Dict{Basic,Basic}
 
 
   @funs Den
-  den_set = Set{Basic}()
+  den_set = Basic[]
   for g in graph_list
     int_edge_list = filter( e_->e_.property[:style] == "Internal", g.edge_list )
     for edge in int_edge_list
       den_mom = subs( edge.property[:momentum], mom[nn] => mom_n )
       den_mass = edge.property[:particle].mass
       den_width = edge.property[:particle].width
-      push!( den_set, Den(expand(den_mom),den_mass,den_width) )
+      union!( den_set, Den(expand(den_mom),den_mass,den_width) )
     end # for edge
   end # for g
+  
+  ext_mom_list = get_ext_momenta(den_set)
+  sort!(den_set, by=den -> begin
+      tmp_mom, tmp_mass, tmp_width = get_args(den)
+      if SymEngine.coeff(tmp_mom, first(ext_mom_list)) < 0
+        tmp_mom = -tmp_mom
+      end # if
+      tmp_mom = expand(tmp_mom)
+      tmp_mass = expand(tmp_mass)
+      tmp_width = expand(tmp_width)
+      tmp_ext_coeff_mat = (vec∘coefficient_matrix)( [tmp_mom], ext_mom_list )
+      tmp_k_str = (join∘map)( coeff->coeff==-1 ? "2" : string(coeff), tmp_ext_coeff_mat)
+      (
+        parse(BigInt, reverse(tmp_k_str), base=3),
+        string(tmp_mass),
+        string(tmp_width)
+      )
+    end
+  ) # end sort!
 
   symbol_list = (free_symbols∘collect∘values)(kin_relation)
   ver_list = filter( x-> (length∘string)(x)>3&&string(x)[1:3]=="ver", symbol_list )
@@ -518,7 +537,7 @@ function generate_kin_relation( graph_list::Vector{Graph} )::Dict{Basic,Basic}
       den_width = edge.property[:particle].width
 
       subs_den_mom = (expand∘subs)( den_mom, mom[nn] => mom_n )
-      if den_mom != subs_den_mom
+      if (!iszero∘expand)( den_mom - subs_den_mom )
         push!( kin_relation, Den(expand(den_mom),den_mass,den_width) => subs(Den(subs_den_mom,den_mass,den_width),kin_relation) )
         push!( kin_relation, Den(expand(-den_mom),den_mass,den_width) => subs(Den(subs_den_mom,den_mass,den_width),kin_relation) )
       end # if
