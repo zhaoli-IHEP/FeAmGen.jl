@@ -154,6 +154,47 @@
 
 
 
+##############################################################################
+# Created by Quan-feng WU <wuquanfeng@ihep.ac.cn>
+# Feb 10, 2024
+"""
+    run_FORM(
+        form_script_str::String;
+        file_name::String="debug",
+        multi_thread_flag::Bool=false
+    )::String
+  
+Run the FORM script `form_script_str` and return the result.
+"""
+function run_FORM(
+  form_script_str::String;
+  file_name::String="debug",
+  multi_thread_flag::Bool=false
+)::String
+  result_io = IOBuffer()
+
+  try
+      (run∘pipeline)(
+          multi_thread_flag ?
+              `$(tform()) -w$(Threads.nthreads()) -q -` :
+              `$(form()) -q -`;
+          stdin=IOBuffer(form_script_str),
+          stdout=result_io
+      ) # end run∘pipeline
+  catch
+    write( "$file_name.frm", form_script_str )
+    @warn "Please check the $(joinpath(pwd(), "$file_name.frm"))!"
+    rethrow()
+  end # try
+
+  return (String∘take!)( result_io )
+end # function run_FORM
+
+
+
+
+
+
 
 
 
@@ -174,13 +215,15 @@ function make_amp_contraction_noexpand_script(
 )::String
 ##############################################################################
 
+  model_parameters_content = (String∘read∘joinpath)( dir, "model_parameters.frm" )
+
   result_str = """
   #-
 
   Off Statistics;
   Off FinalStats;
 
-  #include $(joinpath( dir, "model_parameters.frm" ))
+  $(model_parameters_content)
   #include $(joinpath( art_dir(), "scripts", "contractor.frm" ))
 
   symbol sqrteta;

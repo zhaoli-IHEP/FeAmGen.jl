@@ -1165,6 +1165,10 @@ function contract_Dirac_indices_noexpand(
 
   printstyled( "\n[ Contract the Dirac indices for diagram #$(graph_index) ]\n", color=:green )
 
+  model_parameters_content = (String∘read∘joinpath)( dir, "model_parameters.frm" )[8:end-2]
+  model_parameters = map(Basic∘string, split(model_parameters_content, ",") )
+  removed_underscore_dict, recovered_underscore_dict = remove_recover_underscore( vcat(lorentz_expr_list, model_parameters) )
+
   new_lorentz_expr_list = Vector{Basic}( undef, length(lorentz_expr_list) )
 
   cost_time = @elapsed begin
@@ -1173,17 +1177,28 @@ function contract_Dirac_indices_noexpand(
     file_name = "contract_lorentz_expr$(index)_diagram$(graph_index)_noexpand"
     form_script_str = make_amp_contraction_noexpand_script( lorentz_expr; dir=dir )
 
-    result_io = IOBuffer()
+    for (k, v) ∈ removed_underscore_dict
+      form_script_str = replace( form_script_str, k => v )
+    end # for (k, v)
+
+    # result_io = IOBuffer()
 
     println( "  [ form $(file_name).frm ]" )
-    try
-      run( pipeline( `$(tform()) -w$(Threads.nthreads()) -q -`; stdin=IOBuffer(form_script_str), stdout=result_io ) )
-    catch
-      write( "$(file_name).frm", form_script_str )
-      rethrow()
-    end
+    # try
+    #   run( pipeline( `$(tform()) -w$(Threads.nthreads()) -q -`; stdin=IOBuffer(form_script_str), stdout=result_io ) )
+    # catch
+    #   write( "$(file_name).frm", form_script_str )
+    #   rethrow()
+    # end
 
-    result_expr = (Basic∘String∘take!)(result_io)
+    result_str = run_FORM(form_script_str; file_name=file_name, multi_thread_flag=true)
+
+    for (k, v) ∈ recovered_underscore_dict
+      result_str = replace( result_str, k => v )
+    end # for (k, v)
+
+    result_expr = Basic(result_str)
+    # result_expr = (Basic∘String∘take!)(result_io)
     new_lorentz_expr_list[index] = result_expr
 
   end # for index
@@ -1225,6 +1240,8 @@ function simplify_color_factors(
 
   printstyled( "\n[ Simplify the color factor for diagram #$(graph_index) ]\n", color=:green )
 
+  removed_underscore_dict, recovered_underscore_dict = remove_recover_underscore( color_factor_list )
+
   new_color_factor_list = Vector{Basic}( undef, length(color_factor_list) )
 
   cost_time = @elapsed begin
@@ -1233,17 +1250,28 @@ function simplify_color_factors(
     file_name = "simplify_color$(index)_diagram$(graph_index)"
     form_script_str = make_color_script( one_color_factor )
 
-    result_io = IOBuffer()
+    for (k, v) ∈ removed_underscore_dict
+      form_script_str = replace( form_script_str, k => v )
+    end # for (k, v)
+
+    # result_io = IOBuffer()
 
     println( "  [ form $(file_name).frm ]" )
-    try
-      run( pipeline( `$(form()) -q -`; stdin=IOBuffer(form_script_str), stdout=result_io ) )
-    catch
-      write( "$(file_name).frm", form_script_str )
-      rethrow()
-    end
+    # try
+    #   run( pipeline( `$(form()) -q -`; stdin=IOBuffer(form_script_str), stdout=result_io ) )
+    # catch
+    #   write( "$(file_name).frm", form_script_str )
+    #   rethrow()
+    # end
 
-    result_expr = (Basic∘String∘take!)(result_io)
+    result_str = run_FORM( form_script_str; file_name=file_name, multi_thread_flag=true )
+    
+    for (k, v) ∈ recovered_underscore_dict
+      result_str = replace( result_str, k => v )
+    end # for (k, v)
+
+    result_expr = Basic(result_str)
+    # result_expr = (Basic∘String∘take!)(result_io)
     new_color_factor_list[index] = result_expr
 
   end # for index

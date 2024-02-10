@@ -70,3 +70,30 @@ function find_fermion_loops( tex_file::String )::Vector{Vector{String}}
 
   return loop_list
 end # function find_fermion_loops
+
+
+
+remove_recover_underscore( expr::Basic ) = remove_recover_underscore( [expr] )
+function remove_recover_underscore(
+  exprs::Vector{Basic}
+)::Tuple{
+  Dict{String,String}, # removed_underscore_dict
+  Dict{String,String} # recover_underscore_dict
+}
+  with_underscore_symbols = map( string, free_symbols( exprs ) )
+  filter!( contains("_"), with_underscore_symbols )
+  removed_underscore_symbols = map( x -> replace(x,"_"=>"") , with_underscore_symbols )
+  unique_removed_underscore_symbols = unique( removed_underscore_symbols )
+  for unique_removed_underscore_symbol ∈ unique_removed_underscore_symbols
+    positions = findall( ==(unique_removed_underscore_symbol), removed_underscore_symbols )
+    length(positions) == 1 && continue
+    for (ii, position) ∈ enumerate(positions)
+      removed_underscore_symbols[position] *= "repeated$ii"
+    end # for
+  end # for unique_removed_underscore_symbol
+
+  removed_underscore_dict = Dict( with_underscore_symbols .=> removed_underscore_symbols )
+  recovered_underscore_dict = Dict( removed_underscore_symbols .=> with_underscore_symbols )
+
+  return removed_underscore_dict, recovered_underscore_dict
+end # function remove_recover_underscore

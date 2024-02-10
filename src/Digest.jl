@@ -310,7 +310,19 @@ function readin_model(
   coupling_dict = Dict{Basic, Basic}()
   for coupling ∈ py_model.all_couplings
     coupling_name = lowercase( coupling.name )
-    coupling_value = lowercase( coupling.value )
+    coupling_value = if isa( coupling.value, String ) 
+      lowercase( coupling.value )
+    elseif isa( coupling.value, Dict )
+      if length(coupling.value) ≠ 1
+        @warn """
+          \rDo not support non-single coupling value for now.
+          \r  $coupling_name: $(coupling.value)
+          \r  Skipped.
+        """
+        continue
+      end # if
+      (lowercase∘first∘values)(coupling.value)
+    end # if
 
     coupling_value = replace( coupling_value, "complex(0,1)" => "I" )
     coupling_value = replace( coupling_value, "cmath.cos" => "cos" )
@@ -321,8 +333,15 @@ function readin_model(
     coupling_value = replace( coupling_value, "complexconjugate" => "conj" )
     coupling_value = replace( coupling_value, "**" => "^" )
     coupling_value = replace( coupling_value, "//" => "/" )
-
-    coupling_dict[Basic(coupling_name)] = Basic(coupling_value)
+    try
+      coupling_dict[Basic(coupling_name)] = Basic(coupling_value)
+    catch
+      @warn """
+        \rFailed to parse the coupling value for $coupling_name: $coupling_value
+        \r  Skipped.
+      """
+      continue
+    end
   end # for coupling
 
   #--------------------------------------

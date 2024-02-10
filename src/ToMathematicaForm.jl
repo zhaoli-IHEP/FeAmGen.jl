@@ -85,30 +85,6 @@ function to_m_file(amp_file::String, m_file::Union{Missing, String}=missing)::No
     return nothing
 end
 
-function run_FORM(
-    form_script_str::String;
-    file_name::String="debug",
-    multi_thread_flag::Bool=false
-)::String
-    result_io = IOBuffer()
-
-    try
-        (run ∘ pipeline)(
-            multi_thread_flag ?
-                `$(tform()) -w$(Threads.nthreads()) -q -` :
-                `$(form()) -q -`;
-            stdin=IOBuffer(form_script_str),
-            stdout=result_io
-        )
-    catch
-        write("$file_name.frm", form_script_str)
-        @warn "Please check the $(joinpath(pwd(), "$file_name.frm"))!"
-        rethrow()
-    end
-
-    return (String ∘ take!)(result_io)
-end
-
 to_Mathematica_form(input::Basic)::String = (to_Mathematica_form ∘ string)(input)
 function to_Mathematica_form(input_str::String)::String
     
