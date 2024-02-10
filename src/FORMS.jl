@@ -4,147 +4,147 @@
 
 
 
-##################################################################
-"""
-    make_baseINC_script( graph::Graph )::String
+# ##################################################################
+# """
+#     make_baseINC_script( graph::Graph )::String
 
-Prepare the baseINC script for containing kinematic relations.
-"""
-function make_baseINC_script( graph::Graph )::String
-###################################################################
+# Prepare the baseINC script for containing kinematic relations.
+# """
+# function make_baseINC_script( graph::Graph )::String
+# ###################################################################
 
-  result_str = string()
+#   result_str = string()
 
-  n_inc = graph.property[:n_inc]
-  n_out = graph.property[:n_out]
-  n_leg = n_inc+n_out
+#   n_inc = graph.property[:n_inc]
+#   n_out = graph.property[:n_out]
+#   n_leg = n_inc+n_out
 
-  ext_edge_list = filter( is_external, graph.edge_list )
-  sorted_ext_edge_list = sort( ext_edge_list, by=x->x.property[:mark] ) 
+#   ext_edge_list = filter( is_external, graph.edge_list )
+#   sorted_ext_edge_list = sort( ext_edge_list, by=x->x.property[:mark] ) 
 
-  #---------------------
-  if n_leg == 2
+#   #---------------------
+#   if n_leg == 2
 
-    @assert sorted_ext_edge_list[1].property[:mark] == 1
-    mom1 = sorted_ext_edge_list[1].property[:momentum]
-    @assert sorted_ext_edge_list[2].property[:mark] == 2
-    mom2 = sorted_ext_edge_list[2].property[:momentum]
-    result_str = """
-    argument Levi;
-      id $(mom2) = $(mom1);
-    endargument;
+#     @assert sorted_ext_edge_list[1].property[:mark] == 1
+#     mom1 = sorted_ext_edge_list[1].property[:momentum]
+#     @assert sorted_ext_edge_list[2].property[:mark] == 2
+#     mom2 = sorted_ext_edge_list[2].property[:momentum]
+#     result_str = """
+#     argument Levi;
+#       id $(mom2) = $(mom1);
+#     endargument;
 
-    """
+#     """
 
-    return result_str
-  end # if
-  #---------------------
+#     return result_str
+#   end # if
+#   #---------------------
 
 
-  momN = sorted_ext_edge_list[n_leg].property[:momentum]
-  momNm1 = sorted_ext_edge_list[n_leg-1].property[:momentum]
-  momNm2 = sorted_ext_edge_list[n_leg-2].property[:momentum]
+#   momN = sorted_ext_edge_list[n_leg].property[:momentum]
+#   momNm1 = sorted_ext_edge_list[n_leg-1].property[:momentum]
+#   momNm2 = sorted_ext_edge_list[n_leg-2].property[:momentum]
 
-  #-------------------------------------------------------------
-  sorted_notN_ext_edge_list = filter( x -> x.property[:mark] != n_leg, sorted_ext_edge_list )
+#   #-------------------------------------------------------------
+#   sorted_notN_ext_edge_list = filter( x -> x.property[:mark] != n_leg, sorted_ext_edge_list )
 
-  result_str *= "id FV($(momN),rho?) = ";
-  for edge in sorted_notN_ext_edge_list
-    mom = edge.property[:momentum]
-    inc_sign = edge.property[:mark] <= n_inc ? 1 : (-1)
-    result_str *= "+($(inc_sign))*FV($(mom),rho)"
-  end # for edge
-  result_str *= ";\n"
+#   result_str *= "id FV($(momN),rho?) = ";
+#   for edge in sorted_notN_ext_edge_list
+#     mom = edge.property[:momentum]
+#     inc_sign = edge.property[:mark] <= n_inc ? 1 : (-1)
+#     result_str *= "+($(inc_sign))*FV($(mom),rho)"
+#   end # for edge
+#   result_str *= ";\n"
  
-  result_str *= "id SP($(momN),rho?) = ";
-  for edge in sorted_notN_ext_edge_list
-    mom = edge.property[:momentum]
-    inc_sign = edge.property[:mark] <= n_inc ? 1 : (-1)
-    result_str *= "+($(inc_sign))*SP($(mom),rho)"
-  end # for edge
-  result_str *= ";\n"
+#   result_str *= "id SP($(momN),rho?) = ";
+#   for edge in sorted_notN_ext_edge_list
+#     mom = edge.property[:momentum]
+#     inc_sign = edge.property[:mark] <= n_inc ? 1 : (-1)
+#     result_str *= "+($(inc_sign))*SP($(mom),rho)"
+#   end # for edge
+#   result_str *= ";\n"
 
-  result_str *= 
-    "id FermionChain( Spinor1?ILSPSET(int1?!{,$(n_leg)},mom1?,mass1?),"*
-    " ?vars1, GA($(momN)), ?vars2,"*
-    " Spinor2?IRSPSET(int2?!{,$(n_leg)},mom2?,mass2?) ) = \n"
-  for edge in sorted_notN_ext_edge_list
-    mom = edge.property[:momentum]
-    inc_sign = edge.property[:mark] <= n_inc ? 1 : (-1)
-    result_str *= 
-    "  +($(inc_sign))*FermionChain( Spinor1(int1,mom1,mass1), ?vars1, GA($(mom)), ?vars2, Spinor2(int2,mom2,mass2) )\n"
-  end # for edge
-  result_str *= ";\n"
+#   result_str *= 
+#     "id FermionChain( Spinor1?ILSPSET(int1?!{,$(n_leg)},mom1?,mass1?),"*
+#     " ?vars1, GA($(momN)), ?vars2,"*
+#     " Spinor2?IRSPSET(int2?!{,$(n_leg)},mom2?,mass2?) ) = \n"
+#   for edge in sorted_notN_ext_edge_list
+#     mom = edge.property[:momentum]
+#     inc_sign = edge.property[:mark] <= n_inc ? 1 : (-1)
+#     result_str *= 
+#     "  +($(inc_sign))*FermionChain( Spinor1(int1,mom1,mass1), ?vars1, GA($(mom)), ?vars2, Spinor2(int2,mom2,mass2) )\n"
+#   end # for edge
+#   result_str *= ";\n"
 
-  #-------------------------------------------------------------
-  sorted_notNm1_ext_edge_list = filter( x -> x.property[:mark] != n_leg-1, sorted_ext_edge_list )
-  Nm1_sign = n_leg-1 <= n_inc ? (-1) : (+1)
+#   #-------------------------------------------------------------
+#   sorted_notNm1_ext_edge_list = filter( x -> x.property[:mark] != n_leg-1, sorted_ext_edge_list )
+#   Nm1_sign = n_leg-1 <= n_inc ? (-1) : (+1)
 
-  result_str *=
-    "id FermionChain( Spinor?ILSPSET($(n_leg),mom?,mass?), ?vars1, GA($(momNm1)), ?vars2 ) = \n"
-  for edge in sorted_notNm1_ext_edge_list
-    mom = edge.property[:momentum]
-    inc_sign = edge.property[:mark] <= n_inc ? 1*Nm1_sign : (-1)*Nm1_sign
-    result_str *=
-    "  +($(inc_sign))*FermionChain( Spinor($(n_leg),mom,mass), ?vars1, GA($(mom)), ?vars2 )\n"
-  end # for edge
-  result_str *= ";\n"
+#   result_str *=
+#     "id FermionChain( Spinor?ILSPSET($(n_leg),mom?,mass?), ?vars1, GA($(momNm1)), ?vars2 ) = \n"
+#   for edge in sorted_notNm1_ext_edge_list
+#     mom = edge.property[:momentum]
+#     inc_sign = edge.property[:mark] <= n_inc ? 1*Nm1_sign : (-1)*Nm1_sign
+#     result_str *=
+#     "  +($(inc_sign))*FermionChain( Spinor($(n_leg),mom,mass), ?vars1, GA($(mom)), ?vars2 )\n"
+#   end # for edge
+#   result_str *= ";\n"
 
-  result_str *=
-    "id FermionChain( ?vars1, GA($(momNm1)), ?vars2, Spinor?IRSPSET($(n_leg),mom?,mass?) ) = \n"
-  for edge in sorted_notNm1_ext_edge_list
-    mom = edge.property[:momentum]
-    inc_sign = edge.property[:mark] <= n_inc ? 1*Nm1_sign : (-1)*Nm1_sign
-    result_str *=
-    "  +($(inc_sign))*FermionChain( ?vars1, GA($(mom)), ?vars2, Spinor($(n_leg),mom,mass) )\n"
-  end # for edge
-  result_str *= ";\n"
+#   result_str *=
+#     "id FermionChain( ?vars1, GA($(momNm1)), ?vars2, Spinor?IRSPSET($(n_leg),mom?,mass?) ) = \n"
+#   for edge in sorted_notNm1_ext_edge_list
+#     mom = edge.property[:momentum]
+#     inc_sign = edge.property[:mark] <= n_inc ? 1*Nm1_sign : (-1)*Nm1_sign
+#     result_str *=
+#     "  +($(inc_sign))*FermionChain( ?vars1, GA($(mom)), ?vars2, Spinor($(n_leg),mom,mass) )\n"
+#   end # for edge
+#   result_str *= ";\n"
 
-  #-------------------------------------------------------------
-  sorted_notNm2_ext_edge_list = filter( x -> x.property[:mark] != n_leg-2, sorted_ext_edge_list )
-  Nm2_sign = n_leg-2 <= n_inc ? (-1) : (+1)
+#   #-------------------------------------------------------------
+#   sorted_notNm2_ext_edge_list = filter( x -> x.property[:mark] != n_leg-2, sorted_ext_edge_list )
+#   Nm2_sign = n_leg-2 <= n_inc ? (-1) : (+1)
   
-  result_str *=
-    "id FermionChain( Spinor1?ILSPSET($(n_leg-1),mom1?,mass1?), ?vars1, GA($(momNm2)), ?vars2, Spinor2?IRSPSET($(n_leg),mom2?,mass2?) ) = \n"
-  for edge in sorted_notNm2_ext_edge_list
-    mom = edge.property[:momentum]
-    inc_sign = edge.property[:mark] <= n_inc ? 1*Nm2_sign : (-1)*Nm2_sign
-    result_str *=
-    "  +($(inc_sign))*FermionChain( Spinor1($(n_leg-1),mom1,mass1), ?vars1, GA($(mom)), ?vars2, Spinor2($(n_leg),mom2,mass2) )\n"
-  end # for edge
-  result_str *= ";\n"
+#   result_str *=
+#     "id FermionChain( Spinor1?ILSPSET($(n_leg-1),mom1?,mass1?), ?vars1, GA($(momNm2)), ?vars2, Spinor2?IRSPSET($(n_leg),mom2?,mass2?) ) = \n"
+#   for edge in sorted_notNm2_ext_edge_list
+#     mom = edge.property[:momentum]
+#     inc_sign = edge.property[:mark] <= n_inc ? 1*Nm2_sign : (-1)*Nm2_sign
+#     result_str *=
+#     "  +($(inc_sign))*FermionChain( Spinor1($(n_leg-1),mom1,mass1), ?vars1, GA($(mom)), ?vars2, Spinor2($(n_leg),mom2,mass2) )\n"
+#   end # for edge
+#   result_str *= ";\n"
 
-  result_str *=
-    "id FermionChain( Spinor1?ILSPSET($(n_leg),mom1?,mass1?), ?vars1, GA($(momNm2)), ?vars2, Spinor2?IRSPSET($(n_leg-1),mom2?,mass2?) ) = \n"
-  for edge in sorted_notNm2_ext_edge_list
-    mom = edge.property[:momentum]
-    inc_sign = edge.property[:mark] <= n_inc ? 1*Nm2_sign : (-1)*Nm2_sign
-    result_str *=
-    "  +($(inc_sign))*FermionChain( Spinor1($(n_leg),mom1,mass1), ?vars1, GA($(mom)), ?vars2, Spinor2($(n_leg-1),mom2,mass2) )\n"
-  end # for edge
-  result_str *= ";\n"
+#   result_str *=
+#     "id FermionChain( Spinor1?ILSPSET($(n_leg),mom1?,mass1?), ?vars1, GA($(momNm2)), ?vars2, Spinor2?IRSPSET($(n_leg-1),mom2?,mass2?) ) = \n"
+#   for edge in sorted_notNm2_ext_edge_list
+#     mom = edge.property[:momentum]
+#     inc_sign = edge.property[:mark] <= n_inc ? 1*Nm2_sign : (-1)*Nm2_sign
+#     result_str *=
+#     "  +($(inc_sign))*FermionChain( Spinor1($(n_leg),mom1,mass1), ?vars1, GA($(mom)), ?vars2, Spinor2($(n_leg-1),mom2,mass2) )\n"
+#   end # for edge
+#   result_str *= ";\n"
 
-  #-----------------------------------------------------------------------------------
-  if sorted_ext_edge_list[n_leg].property[:particle].spin == :vector
-    result_str *=
-      "id FV($(momNm1),rho?)*VecEpsilon?{VecEp,VecEpC}($(n_leg),rho?,$(momN),r$(n_leg)?,mass?) = \n"
-    for index in 1:(n_leg-2)
-      edge = sorted_ext_edge_list[index]
-      mom = edge.property[:momentum]
-      inc_sign = index <= n_inc ? (+1) : (-1)
-      result_str *=
-      "  +($(inc_sign))*FV($(mom),rho)*VecEpsilon($(n_leg),rho,$(momN),r$(n_leg),mass)\n"
-    end # for index
-  end # if
+#   #-----------------------------------------------------------------------------------
+#   if sorted_ext_edge_list[n_leg].property[:particle].spin == :vector
+#     result_str *=
+#       "id FV($(momNm1),rho?)*VecEpsilon?{VecEp,VecEpC}($(n_leg),rho?,$(momN),r$(n_leg)?,mass?) = \n"
+#     for index in 1:(n_leg-2)
+#       edge = sorted_ext_edge_list[index]
+#       mom = edge.property[:momentum]
+#       inc_sign = index <= n_inc ? (+1) : (-1)
+#       result_str *=
+#       "  +($(inc_sign))*FV($(mom),rho)*VecEpsilon($(n_leg),rho,$(momN),r$(n_leg),mass)\n"
+#     end # for index
+#   end # if
 
-  result_str *= """
-    ; 
-    id FV(mom?,rho?)*VecEpsilon?{VecEp,VecEpC}(int?,rho?,mom?,mass?) = 0;
-    """
+#   result_str *= """
+#     ; 
+#     id FV(mom?,rho?)*VecEpsilon?{VecEp,VecEpC}(int?,rho?,mom?,mass?) = 0;
+#     """
 
-  return result_str
+#   return result_str
 
-end # function make_baseINC_script
+# end # function make_baseINC_script
 
 
 

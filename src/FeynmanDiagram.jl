@@ -1269,7 +1269,6 @@ end # function simplify_color_factors
         ext_mom_list::Vector{Basic},
         scale2_list::Vector{Basic},
         kin_relation::Dict{Basic,Basic},
-        baseINC_script_str::String,
         amp_color_list::Vector{Basic},
         amp_lorentz_noexpand_list::Vector{Basic},
         loop_den_list::Vector{Basic},
@@ -1293,7 +1292,7 @@ function write_out_amplitude(
     ext_mom_list::Vector{Basic},
     scale2_list::Vector{Basic},
     kin_relation::Dict{Basic,Basic},
-    baseINC_script_str::String,
+    # baseINC_script_str::String,
     amp_color_list::Vector{Basic},
     amp_lorentz_noexpand_list::Vector{Basic},
     loop_den_list::Vector{Basic},
@@ -1406,7 +1405,7 @@ function write_out_amplitude(
     write( file, "loop_den_list",  string.(loop_den_list) )
     write( file, "loop_den_xpt_list", loop_den_xpt_list )
     write( file, "kin_relation", to_String_dict(kin_relation) )
-    write( file, "baseINC_script_str", baseINC_script_str )
+    # write( file, "baseINC_script_str", baseINC_script_str )
     write( file, "mom_symmetry", to_String_dict(mom_symmetry) )
     write( file, "color_symmetry", color_symmetry )
     write( file, "model_parameter_dict", to_String_dict(parameter_dict) )
@@ -1762,7 +1761,7 @@ function generate_amplitude(
   bk_mkdir( visual_dir )
 
   # baseINC only needs information from the external fields.
-  baseINC_script_str = make_baseINC_script( first(graph_list) )
+  # baseINC_script_str = make_baseINC_script( first(graph_list) )
 
   mom_symmetry = to_Basic_dict( convert( Vector{Vector{String}}, input["momentum_symmetry"] ) )
   @show mom_symmetry
@@ -1895,7 +1894,7 @@ function generate_amplitude(
     
     write_out_amplitude( n_inc, n_loop, graph_index, signed_symmetry_factor,
         couplingfactor, model.parameter_dict, model.coupling_dict,
-        ext_mom_list, scale2_list, kin_relation, baseINC_script_str,
+        ext_mom_list, scale2_list, kin_relation, #baseINC_script_str,
         color_list, lorentz_list, loop_den_list, canon_map, loop_den_xpt_list,
         mom_symmetry, color_symmetry, min_ep_xpt, max_ep_xpt, amp_dir )
 

@@ -12,6 +12,6 @@ proc_dir = joinpath( rootdir, proc_str )
 amp_dir = joinpath( proc_dir, "$(proc_str)_amplitudes" )
 
 @assert isdir(amp_dir)
-construct_den_topology(amp_dir; method_to_find_momentum_shifts=:PakAlgorithm)
+construct_den_topology(amp_dir; mode=:PakAlgorithm)
 
 @info "Test for `construct_den_topology` with Pak algorithm ends @ $(now())."

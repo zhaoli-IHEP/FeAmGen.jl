@@ -7,7 +7,7 @@
 """
   find_fermion_loops( tex_file::String )::Vector{Vector{String}}
 
-Give the particle name of the fermion loop in the Feynman diagram.
+Give the particle names of the fermion loop in the Feynman diagram.
 """
 function find_fermion_loops( tex_file::String )::Vector{Vector{String}}
 #################################################
