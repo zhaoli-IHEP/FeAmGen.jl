@@ -24,7 +24,7 @@ function find_fermion_loops( tex_file::String )::Vector{Vector{String}}
   v_line_list = filter!( startswith(r"v[1-9]\d*"), v_line_list )
   v_line_list = filter!( endswith(r"v[1-9]\d*,"), v_line_list )
   v_line_list = filter!( contains("fermion"), v_line_list )
-  isempty(v_line_list) && return Int[]
+  isempty(v_line_list) && return [String[]]
 
   v_pair_list = Vector{Int}[]
   particle_name_list = String[]
@@ -44,14 +44,13 @@ function find_fermion_loops( tex_file::String )::Vector{Vector{String}}
     end_v_id_indices = findall( ≠(2), v_count_list )
     isempty(end_v_id_indices) && break
 
-    end_v_id = v_id_list[v_id_list]
-    to_be_deleted_indices = findall( v_pair->end_v_id∈v_pair, v_pair_list )
+    end_v_id = v_id_list[end_v_id_indices]
+    to_be_deleted_indices = findall( v_pair->!isempty(end_v_id∩v_pair), v_pair_list )
     deleteat!( v_pair_list, to_be_deleted_indices )
     deleteat!( particle_name_list, to_be_deleted_indices )
   end # while
 
   isempty(v_pair_list) && return [String[]]
-  sort!(v_pair_list; by=first)
 
   loop_list = Vector{String}[]
   while !isempty(v_pair_list)
