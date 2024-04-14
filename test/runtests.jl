@@ -15,4 +15,6 @@ include("tWtW_Test.jl")
 
 include("ppttbar_CT_Test.jl")
 
-include("script_construct_topology.jl")
+include("construct_den_topology_Canon.jl")
+
+include("construct_den_topology_Pak.jl")
