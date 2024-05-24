@@ -34,6 +34,7 @@ export canonicalize_amp
 export find_fermion_loops
 export is_planar
 export to_m_file
+export gen_shifted_amp
 
 include("Universe.jl")
 include("Graph.jl")
