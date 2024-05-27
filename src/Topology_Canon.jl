@@ -20,8 +20,8 @@ function minimize_topology_list_directly(
     error("No preferred loop expressions for $n_loop-loop! Please use `:PakAlgorithm` instead!")
   end # if
 
-  external_momenta = reduce(union, map(dc -> dc.external_momenta, den_collection_list))
-  independent_external_momenta = external_momenta[begin:end-1]
+  independent_external_momenta = reduce(union, map(dc -> dc.external_momenta, den_collection_list))
+  # independent_external_momenta = external_momenta[begin:end-1]
   independent_external_momenta = map(Basic, independent_external_momenta)
   n_ind_ext = length(independent_external_momenta)
 
@@ -112,7 +112,7 @@ function make_complete_topology(
   loop_momenta = map(Basic, topology.loop_momenta)
   q_list = [Basic("q$ii") for ii ∈ 1:n_loop]
   external_momenta = topology.external_momenta
-  k_list = map(Basic, external_momenta[begin:end-1])
+  k_list = map(Basic, external_momenta#=[begin:end-1]=#)
   n_ind_ext = length(k_list)
   tmp_dict = Dict(loop_momenta .=> q_list)
 
@@ -187,7 +187,7 @@ function canonicalize_denominator_collection(
   @assert n_loop ∈ 1:4 "Only support 1-4 loop(s), but got $(n_loop) loop(s)!"
   loop_momenta = map(Basic, denominator_collection.loop_momenta)
   q_list = [Basic("q$ii") for ii ∈ 1:n_loop]
-  k_list = map(Basic, denominator_collection.external_momenta[begin:end-1])
+  k_list = map(Basic, denominator_collection.external_momenta#=[begin:end-1]=#)
   tmp_dict = Dict(loop_momenta .=> q_list)
 
   denominator_momenta = Vector{Basic}(undef, length(denominator_collection))

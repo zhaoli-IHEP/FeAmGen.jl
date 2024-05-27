@@ -289,8 +289,11 @@ function read_loop_denominators(
   n_loop = amplitude_file["n_loop"]
   loop_den_list = map(Basic, amplitude_file["loop_den_list"])
   loop_momenta = ["q$ii" for ii ∈ 1:n_loop]
+  external_momenta = to_Basic( amplitude_file["ext_mom_list"] )
+  sort!(external_momenta; by=get_ext_index)
+  pop!(external_momenta)
   external_momenta = subs.(
-    map(Basic, amplitude_file["ext_mom_list"]),
+    external_momenta,
     (Ref ∘ Dict{Basic, Basic})(Basic(key) => Basic(value) for (key, value) ∈ amplitude_file["mom_symmetry"])
   ) # end external_momenta
   unique!(external_momenta)
@@ -327,8 +330,8 @@ function minimize_topology_list_directly(
   loop_momenta = map(Basic, loop_momenta)
   n_loop = length(loop_momenta)
 
-  external_momenta = reduce(union, map(dc -> dc.external_momenta, den_collection_list))
-  independent_external_momenta = external_momenta[begin:end-1]
+  independent_external_momenta = reduce(union, map(dc -> dc.external_momenta, den_collection_list))
+  # independent_external_momenta = external_momenta[begin:end-1]
   independent_external_momenta = map(Basic, independent_external_momenta)
   n_ind_ext = length(independent_external_momenta)
 
@@ -395,7 +398,7 @@ end # function minimize_topology_list_directly
 function is_complete_topology(den_collection::FeynmanDenominatorCollection)::Bool
   loop_momenta = map(Basic, den_collection.loop_momenta)
   n_loop = length(loop_momenta)
-  independent_external_momenta = map(Basic, den_collection.external_momenta[begin:end-1])
+  independent_external_momenta = map(Basic, den_collection.external_momenta#=[begin:end-1]=#)
   n_ind_ext = length(independent_external_momenta)
   n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
 
@@ -408,7 +411,7 @@ function calculate_denominator_collection_rank(
   den_collection::FeynmanDenominatorCollection
 )::Int
   loop_momenta = map(Basic, den_collection.loop_momenta)
-  independent_external_momenta = map(Basic, den_collection.external_momenta[begin:end-1])
+  independent_external_momenta = map(Basic, den_collection.external_momenta#=[begin:end-1]=#)
   den_list = map(Basic, den_collection.denominators)
   return calculate_denominator_collection_rank(
     loop_momenta, independent_external_momenta, den_list
