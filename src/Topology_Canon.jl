@@ -94,7 +94,7 @@ function minimize_topology_list_directly(
     den_list = reduce(union, den_list_list[indices])
     push!(result_den_collection_list,
       FeynmanDenominatorCollection(
-        loop_momenta, external_momenta, den_list;
+        loop_momenta, independent_external_momenta, den_list;
         check_validity=false
       )
     ) # end push!
