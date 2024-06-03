@@ -231,6 +231,7 @@ function construct_den_topology(
 
   # write topology ############################################################
   write_topology(covering_dict, amp_filename_list, topology_directory, kin_relation_dict)
+  gen_shifted_amp( topology_directory )
   # end write topology ########################################################
 
   return complete_topologies

@@ -96,13 +96,11 @@ function gen_shifted_amp( top_file::String )::Vector{String}
   bk_mkdir( shifted_amp_dir )
   shifted_amp_list = String[]
   for (amp_file, mom_shift_dict) ∈ top_info["covering_amplitudes"]
-    @info "Generating shifted amplitudes: $amp_file"
-
     original_amp_file = (abspath ∘ joinpath)( top_dir, amp_file )
+    @info "Input amplitude: $original_amp_file"
     @assert isfile( original_amp_file ) "File not found: $original_amp_file."
     amp_info = load( original_amp_file )
-    target_amp_file = joinpath( shifted_amp_dir, basename( original_amp_file ) )
-    isfile( target_amp_file ) && continue
+    target_amp_file = joinpath( shifted_amp_dir, basename( original_amp_file )[begin:end-5] * "_" * basename( top_file ) )
 
     mom_shift = Dict{Basic, Basic}()
     for (k, v) ∈ mom_shift_dict
@@ -121,11 +119,13 @@ function gen_shifted_amp( top_file::String )::Vector{String}
 
     amp_info["loop_den_list"] = map(string, loop_den_list)
     amp_info["amp_lorentz_list"] = map(string, amp_lorentz_list)
+    # amp_info["corresponding_topology"] = relative_path( target_amp_file, top_file )
 
     jldopen( target_amp_file, "w" ) do io
       for (k, v) ∈ amp_info
         io[k] = v
       end # for (k, v)
+      io["corresponding_topology"] = relative_path( target_amp_file, top_file )
     end # jldopen
     
     push!( shifted_amp_list, target_amp_file )

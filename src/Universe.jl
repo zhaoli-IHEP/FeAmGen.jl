@@ -428,8 +428,8 @@ end
 ###########################################
 function relative_path(base_path::String, target_path::String)::String
 ###########################################
-  @assert ispath(base_path) "Got non-existent path: $base_path."
-  @assert ispath(target_path) "Got non-existent path: $target_path."
+  @assert ispath(base_path) "Got non-existent path: $base_path"
+  @assert ispath(target_path) "Got non-existent path: $target_path"
 
   base_abspath = abspath(base_path)
   target_abspath = abspath(target_path)
