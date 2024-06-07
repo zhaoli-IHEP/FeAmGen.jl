@@ -74,26 +74,35 @@ end # function find_fermion_loops
 
 #################################################
 """
-    gen_shifted_amp( top_file::String )::Vector{String}
+    gen_shifted_amp( top_file::String; path_type::Symbol=:dir )::Vector{String}
 
 Generate the shifted amplitudes according to the topology file.
 """
-function gen_shifted_amp( top_file::String )::Vector{String}
+function gen_shifted_amp( top_file::String; path_type::Symbol=:dir )::Vector{String}
 #################################################
   @assert ispath( top_file ) "Path not found: $top_file."
-  if isdir( top_file )
+
+  shifted_amp_dir = "_shifted_amps"
+  if path_type == :dir
+    @assert isdir( top_file ) "Directory not found: $top_file."
+    shifted_amp_dir = top_file * shifted_amp_dir
+    bk_mkdir( shifted_amp_dir )
     top_file_list = filter!( endswith(".jld2"), readdir( top_file; join=true) )
-    file_list = map( gen_shifted_amp, top_file_list )
+    file_list = map( top_file -> gen_shifted_amp(top_file; path_type=:file), top_file_list )
     return union( file_list... )
   end # if
+  @assert isfile( top_file ) "File not found: $top_file."
   @assert endswith( top_file, ".jld2" ) "Invalid file extension: $top_file."
   top_info = load( top_file )
   @assert (isempty ∘ symdiff)( keys(top_info), ["kinematic_relation", "covering_amplitudes", "external_momenta", "loop_momenta", "denominators"] ) "Invalid topology file: $top_file."
 
   top_dir = (dirname ∘ abspath)( top_file )
+  shifted_amp_dir = top_dir * shifted_amp_dir
+  if !isdir( shifted_amp_dir )
+    rm( shifted_amp_dir; recursive=true, force=true )
+    mkdir( shifted_amp_dir )
+  end # if
 
-  shifted_amp_dir = top_dir * "_shifted_amps"
-  bk_mkdir( shifted_amp_dir )
   shifted_amp_list = String[]
   for (amp_file, mom_shift_dict) ∈ top_info["covering_amplitudes"]
     original_amp_file = (abspath ∘ joinpath)( top_dir, amp_file )
