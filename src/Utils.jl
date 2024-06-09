@@ -134,7 +134,7 @@ function gen_shifted_amp( top_file::String; path_type::Symbol=:dir )::Vector{Str
       for (k, v) ∈ amp_info
         io[k] = v
       end # for (k, v)
-      io["corresponding_topology"] = relative_path( target_amp_file, top_file )
+      io["topology"] = top_info
     end # jldopen
     
     push!( shifted_amp_list, target_amp_file )
