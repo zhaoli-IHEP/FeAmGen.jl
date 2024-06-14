@@ -122,6 +122,14 @@ function gen_shifted_amp( top_file::String; path_type::Symbol=:dir )::Vector{Str
     for (ii, loop_den) ∈ enumerate(loop_den_list)
       loop_den_list[ii] = subs( loop_den, mom_shift )
     end # for (ii, loop_den)
+    loop_den_list = normalize_loop_mom( loop_den_list )
+    @assert (isempty∘setdiff)(loop_den_list, to_Basic(top_info["denominators"])) begin
+      """
+      The loop denominators in the amplitude file are not consistent with the topology file.
+        shifted_loop_dens: $loop_den_list
+        topology_dens: $(top_info["denominators"])
+      """
+    end # @assert
     for (ii, amp_lorentz) ∈ enumerate(amp_lorentz_list)
       amp_lorentz_list[ii] = subs( amp_lorentz, mom_shift )
     end # for (ii, amp_lorent)
