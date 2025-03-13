@@ -7,8 +7,9 @@ git-tree-sha1 = "fd52b7e8a49d815772456cac19a90303c9ec0517"
 
 
 [QGRAF]
-git-tree-sha1 = "e7dde2d406e0e3b3402d97e0671378543cd5a701"
+git-tree-sha1 = "ad6fea1375348ca4e3bad6f69fc88169fd8570e3"
 
     [[QGRAF.download]]
-    url = "http://anonymous:anonymous@qgraf.tecnico.ulisboa.pt/v3.6/qgraf-3.6.7.tgz"
-    sha256 = "567e57a9512230fd08b84a7393fc1308ae8970f0ed64a347da89aca42acd314c"
+    url = "http://anonymous:anonymous@qgraf.tecnico.ulisboa.pt/v3.6/qgraf-3.6.10.tgz"
+    sha256 = "6d4b5c6eb97de1942b824d80b8cb454dd77667492d0001e3bf21e761c5702194"
+
