@@ -491,7 +491,7 @@ function generate_kin_relation( graph_list::Vector{Graph} )::Dict{Basic,Basic}
   ext_mom_list = get_ext_momenta(den_set)
   sort!(den_set, by=den -> begin
       tmp_mom, tmp_mass, tmp_width = get_args(den)
-      if SymEngine.coeff(tmp_mom, first(ext_mom_list)) < 0
+      if SymEngine.coeff(tmp_mom, first(ext_mom_list), 1) < 0
         tmp_mom = -tmp_mom
       end # if
       tmp_mom = expand(tmp_mom)

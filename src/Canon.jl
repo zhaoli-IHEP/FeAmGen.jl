@@ -128,7 +128,7 @@ function normalize_loop_mom_single(
 
   q_list = get_loop_momenta( [ loop_mom ] )
   isempty(q_list) && return expand( loop_mom )
-  qi_coeff = SymEngine.coeff( expand(loop_mom), first(q_list))
+  qi_coeff = SymEngine.coeff( expand(loop_mom), first(q_list), 1 )
 
   return expand( loop_mom / qi_coeff )
 

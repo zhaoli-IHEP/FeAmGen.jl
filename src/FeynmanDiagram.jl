@@ -964,7 +964,7 @@ function convert_qgraf_TO_Graph(
         if vert.property[:QCDct_order] == 0
           new_couplings_lorentz_list[r_] += subs(inter.couplings_matrix[r_,c_],CTorder,0)*new_lorentz_col_list[c_]
         else
-          new_couplings_lorentz_list[r_] += SymEngine.coeff( expand(inter.couplings_matrix[r_,c_]), CTorder^(vert.property[:QCDct_order]) )*new_lorentz_col_list[c_]
+          new_couplings_lorentz_list[r_] += SymEngine.coeff( expand(inter.couplings_matrix[r_,c_]), CTorder, vert.property[:QCDct_order] )*new_lorentz_col_list[c_]
         end # if
       end # for c_
     end # for r_
