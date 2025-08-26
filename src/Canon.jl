@@ -152,7 +152,7 @@ function normalize_loop_mom(
   for index in eachindex(loop_den_list)
     mom, mass, width = get_args(loop_den_list[index])
     mom = expand(mom)
-    coeff_list = SymEngine.coeff.( mom, qi_list )
+    coeff_list = SymEngine.coeff.( mom, qi_list, 1 )
     first_nonzero_index = findfirst( !iszero, coeff_list )
     @assert !isnothing(first_nonzero_index)
     if coeff_list[first_nonzero_index] < 0
