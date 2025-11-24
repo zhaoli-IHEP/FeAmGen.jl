@@ -1621,7 +1621,7 @@ function has_qi(
 )::Bool
 ####################
 
-  return !(iszero∘SymEngine.coeff)(mom,qi)
+  return !(iszero∘SymEngine.coeff)(mom,qi,1)
 
 end # function has_qi
 
