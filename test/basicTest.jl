@@ -323,5 +323,21 @@ end # @testset
 
 
 
+@testset "zero color factors after exact simplification" begin
+  ca, cf, nc = Basic("ca"), Basic("cf"), Basic("nc")
+  color_map = Dict( ca=>nc, cf=>(nc^2-1)/(2*nc) )
+  for zero_expr ∈ [
+      Basic("-1/(4*ca^2)-cf/(2*ca)+1/4"),
+      Basic("1/(4*ca^2)+cf/(2*ca)-1/4")
+    ]
+    zero_color = zero_expr * Basic("SUNT(clb2,cla4,clb1)")
+    @test FeAmGen.is_zero_color_factor( zero_color, color_map )
+    @test FeAmGen.is_zero_color_factor( -zero_color, color_map )
+  end
+  @test !FeAmGen.is_zero_color_factor( Basic("1"), color_map )
+  @test !FeAmGen.is_zero_color_factor(
+    Basic("cf*ca/2+1/4") * Basic("SUNT(clb2,cla4,clb1)"), color_map )
+end # @testset
+
 @info "basicTest ends @ $(now())"
 

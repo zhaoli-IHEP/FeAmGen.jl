@@ -1284,6 +1284,23 @@ end # function simplify_color_factors
 
 
 
+"""
+    is_zero_color_factor(
+        color_factor::Basic,
+        color_map::Dict{Basic,Basic}
+    )::Bool
+
+Return whether a color factor vanishes after exact simplification with the supplied color substitution rules.
+"""
+function is_zero_color_factor(
+    color_factor::Basic,
+    color_map::Dict{Basic,Basic}
+)::Bool
+  return (iszero ∘ expand ∘ subs)( color_factor, color_map )
+end # function is_zero_color_factor
+
+
+
 ########################################################################################
 """
     write_out_amplitude(
@@ -1859,7 +1876,7 @@ function generate_amplitude(
     # Sometimes evaluation to Nc can also lead to zero.
     @vars ca cf nc
     color_map = Dict([ ca=>nc, cf=>(nc^2-1)/(2*nc) ])
-    nonzero_pos_list = findall( !iszero, map(x->subs(x,color_map),color_list) )
+    nonzero_pos_list = findall( x -> !is_zero_color_factor(x,color_map), color_list )
     color_list = color_list[nonzero_pos_list]
 
     if isempty(color_list)

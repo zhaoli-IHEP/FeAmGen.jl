@@ -12,6 +12,8 @@ proc_dir = joinpath( rootdir, proc_str )
 amp_dir = joinpath( proc_dir, "$(proc_str)_amplitudes" )
 
 @assert isdir(amp_dir)
-construct_den_topology(amp_dir; mode=:PakAlgorithm)
+topologies = construct_den_topology(amp_dir; mode=:PakAlgorithm)
+@assert !isempty(topologies)
+@assert all(topology -> topology.external_momenta == ["k1", "k2", "K3"], topologies)
 
 @info "Test for `construct_den_topology` with Pak algorithm ends @ $(now())."
