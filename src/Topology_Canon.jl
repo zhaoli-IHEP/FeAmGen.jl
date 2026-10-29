@@ -11,11 +11,7 @@ function minimize_topology_list_directly(
   n_loop = length(loop_momenta)
 
   preferred_loop_exprs_list = if haskey(preferred_vac_mom_dict(), n_loop)
-    exprs_list = preferred_vac_mom_dict()[n_loop]
-    for (ii, exprs) ∈ enumerate(exprs_list)
-      map!(x -> expand(x^2), exprs_list[ii], exprs)
-    end # for
-    exprs_list
+    map(exprs -> map(x -> expand(x^2), exprs), preferred_vac_mom_dict()[n_loop])
   else
     error("No preferred loop expressions for $n_loop-loop! Please use `:PakAlgorithm` instead!")
   end # if
@@ -26,6 +22,7 @@ function minimize_topology_list_directly(
   n_ind_ext = length(independent_external_momenta)
 
   n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
+  loop_mom_zero_map = SymEngine.CMapBasicBasic( Dict(loop_momenta .=> zero(Basic)) )
 
   den_list_list = map(dc -> unique(dc.denominators), den_collection_list)
 
@@ -52,7 +49,7 @@ function minimize_topology_list_directly(
           @assert length(momentum_set) == 1 "Not a standard Feynman propagator denominator!"
           pure_loop_exprs[ii] = (Basic ∘ first)(momentum_set)
         end # for (ii, den)
-        map!(expr -> expand(expr - subs(expr, Dict(loop_momenta .=> zero(Basic)))),
+        map!(expr -> expand(expr - subs(expr, loop_mom_zero_map)),
           pure_loop_exprs, pure_loop_exprs
         ) # end map!
         unique!(pure_loop_exprs)
@@ -114,7 +111,8 @@ function make_complete_topology(
   external_momenta = topology.external_momenta
   k_list = map(Basic, external_momenta#=[begin:end-1]=#)
   n_ind_ext = length(k_list)
-  tmp_dict = Dict(loop_momenta .=> q_list)
+  tmp_map = SymEngine.CMapBasicBasic( Dict(loop_momenta .=> q_list) )
+  q_zero_map = SymEngine.CMapBasicBasic( Dict(q_list .=> zero(Basic)) )
 
   n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
 
@@ -124,7 +122,7 @@ function make_complete_topology(
     @assert length(momentum_set) == 1 "Not a standard Feynman propagator denominator!"
     denominator_momenta[ii] = (Basic ∘ first)(momentum_set)
   end # for (ii, den)
-  map!(den_mom -> subs(den_mom, tmp_dict), denominator_momenta, denominator_momenta)
+  map!(den_mom -> subs(den_mom, tmp_map), denominator_momenta, denominator_momenta)
 
   new_denominator_list = Vector{FeynmanDenominator}(undef, length(topology))
   for (ii, den) ∈ enumerate(topology)
@@ -138,7 +136,7 @@ function make_complete_topology(
 
   vacuum_denominator_momenta = begin
     preferred_loop_exprs_list = preferred_vac_mom_dict()[n_loop]
-    pure_loop_exprs = map(expr -> expand(expr - subs(expr, Dict(q_list .=> 0))),
+    pure_loop_exprs = map(expr -> expand(expr - subs(expr, q_zero_map)),
       denominator_momenta
     ) # end map
     unique!(pure_loop_exprs)
@@ -188,7 +186,7 @@ function canonicalize_denominator_collection(
   loop_momenta = map(Basic, denominator_collection.loop_momenta)
   q_list = [Basic("q$ii") for ii ∈ 1:n_loop]
   k_list = map(Basic, denominator_collection.external_momenta#=[begin:end-1]=#)
-  tmp_dict = Dict(loop_momenta .=> q_list)
+  tmp_map = SymEngine.CMapBasicBasic( Dict(loop_momenta .=> q_list) )
 
   denominator_momenta = Vector{Basic}(undef, length(denominator_collection))
   for (ii, den) ∈ enumerate(denominator_collection)
@@ -196,10 +194,11 @@ function canonicalize_denominator_collection(
     @assert length(momentum_set) == 1 "Not a standard Feynman propagator denominator!"
     denominator_momenta[ii] = (Basic ∘ first)(momentum_set)
   end # for (ii, den)
-  map!(den_mom -> subs(den_mom, tmp_dict), denominator_momenta, denominator_momenta)
+  map!(den_mom -> subs(den_mom, tmp_map), denominator_momenta, denominator_momenta)
 
   canonicalization_map = gen_loop_mom_canon_map(denominator_momenta, q_list, k_list)
-  map!(den_mom -> subs(den_mom, canonicalization_map), denominator_momenta, denominator_momenta)
+  canonicalization_native_map = SymEngine.CMapBasicBasic( canonicalization_map )
+  map!(den_mom -> subs(den_mom, canonicalization_native_map), denominator_momenta, denominator_momenta)
 
   new_denominator_list = Vector{FeynmanDenominator}(undef, length(denominator_collection))
   for (ii, den) ∈ enumerate(denominator_collection)

@@ -56,6 +56,7 @@ include("Utils.jl")
 ###################
 function __init__()
 ###################
+  initialize_preferred_vac_mom_dict!()
   return nothing
 end # function __init__
 

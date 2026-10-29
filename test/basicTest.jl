@@ -323,6 +323,56 @@ end # @testset
 
 
 
+@testset "canonicalization preserves symbolic substitutions" begin
+  q1, q2, q3, K1 = Basic("q1"), Basic("q2"), Basic("q3"), Basic("K1")
+  @funs Den
+  nonconsecutive_den = [Den(-q1 + q3, 0, 0), Den(q1 + K1, 0, 0), Den(-q3 - K1, 0, 0)]
+  consecutive_den = [Den(-q1 + q2, 0, 0), Den(q1 + K1, 0, 0), Den(-q2 - K1, 0, 0)]
+  nonconsecutive_amp = [q1^2 + q1 * q3 + q3, q3 * (q1 - K1)]
+  consecutive_amp = [q1^2 + q1 * q2 + q2, q2 * (q1 - K1)]
+
+  actual_den, actual_amp, actual_shift = FeAmGen.canonicalize_amp(nonconsecutive_den, nonconsecutive_amp)
+  expected_den, expected_amp, _ = FeAmGen.canonicalize_amp(consecutive_den, consecutive_amp)
+  @test actual_den == expected_den
+  @test actual_amp == expected_amp
+  @test actual_amp == subs.(nonconsecutive_amp, Ref(actual_shift))
+  @test FeAmGen.normalize_loop_mom(subs.(nonconsecutive_den, Ref(actual_shift))) == actual_den
+  @test all(≥(0), FeAmGen.coefficient_matrix(map(first ∘ get_args, actual_den), [q1, q2]))
+
+  bases = FeAmGen.preferred_vac_mom_dict()
+  original_bases = deepcopy(bases)
+  one_loop = FeAmGen.FeynmanDenominatorCollection(
+    Basic[q1], Basic[K1],
+    [FeAmGen.FeynmanDenominator(q1, 0, 0), FeAmGen.FeynmanDenominator(q1 + K1, 0, 0)]
+  )
+  FeAmGen.minimize_topology_list_directly(Val(:Canonicalization), [one_loop])
+  @test bases == original_bases
+  @test FeAmGen.preferred_vac_mom_dict() == original_bases
+end # @testset
+
+
+@testset "directory-local denominator parsing" begin
+  mktempdir() do dir
+    for index ∈ (1, 2, 10)
+      FeAmGen.jldopen(joinpath(dir, "amp$index.jld2"), "w") do io
+        io["n_loop"] = 1
+        io["loop_den_list"] = ["Den(q1,0,0)", "Den(q1+K1,0,0)"]
+        io["ext_mom_list"] = ["K1", "K2"]
+        io["mom_symmetry"] = Dict{String,String}()
+        io["kin_relation"] = Dict("SP(K1,K1)" => "0")
+      end
+    end
+    files, collections, kin = FeAmGen.read_loop_denominators(Val(:AmplitudeDirectory), dir, true)
+    @test basename.(files) == ["amp1.jld2", "amp2.jld2", "amp10.jld2"]
+    @test length(kin) == 1
+    @test all(collection -> length(collection) == 2, collections)
+    untouched_denominators = deepcopy(collections[2].denominators)
+    push!(collections[1].denominators[1].denominator_momenta, "not_shared")
+    @test collections[2].denominators == untouched_denominators
+  end
+end # @testset
+
+
 @testset "zero color factors after exact simplification" begin
   ca, cf, nc = Basic("ca"), Basic("cf"), Basic("nc")
   color_map = Dict( ca=>nc, cf=>(nc^2-1)/(2*nc) )

@@ -2,6 +2,7 @@ include("Topology_legacy.jl")
 include("Topology_Canon.jl")
 include("Topology_Pak.jl")
 
+####################################################
 function construct_den_topology(
   amp_dir::String;
   mode::Symbol=:Canonicalization, # :Canonicalization or :PakAlgorithm
@@ -14,6 +15,7 @@ function construct_den_topology(
   find_external_momentum_shifts::Bool=false,
   recheck_momentum_shifts::Bool=false
 )::Vector{FeynmanDenominatorCollection}
+####################################################
 
   # check options #############################################################
   @assert mode ∈ [
@@ -235,8 +237,14 @@ function construct_den_topology(
   # end write topology ########################################################
 
   return complete_topologies
+
 end # function construct_den_topology
 
+
+
+################################################################################
+# Read sorted amplitude files into denominator collections, and collect their
+# kinematic relations, optionally checking every file for consistency.
 function read_loop_denominators(
   ::Val{:AmplitudeDirectory},
   amplitude_directory::String,
@@ -246,6 +254,8 @@ function read_loop_denominators(
   Vector{FeynmanDenominatorCollection},
   Dict{Basic, Basic} # kinematic relations
 }
+################################################################################
+
   @assert isdir(amplitude_directory) "Got non-existent directory: $amplitude_directory."
   amp_filename_list = filter!(endswith(".jld2"), readdir(amplitude_directory; join=true, sort=false))
   sort!(amp_filename_list, by=filename -> begin
@@ -254,13 +264,16 @@ function read_loop_denominators(
                                             parse(Int, index_str)
                                           end)
   @assert !isempty(amp_filename_list) "Cannot find any amplitude file with extension .jld2 in $amplitude_directory."
+  denominator_args_cache = Dict{String,NTuple{3,Basic}}()
   first_den_collection, kin_relation_dict = read_loop_denominators(
-    Val(:AmplitudeFile), first(amp_filename_list), true
+    Val(:AmplitudeFile), first(amp_filename_list), true;
+    denominator_args_cache
   )
   den_collections = FeynmanDenominatorCollection[first_den_collection]
   for amp_file ∈ amp_filename_list[2:end]
     den_collection, new_kin_relation_dict = read_loop_denominators(
-      Val(:AmplitudeFile), amp_file, check_all_kinematic_relations
+      Val(:AmplitudeFile), amp_file, check_all_kinematic_relations;
+      denominator_args_cache
     )
     push!(den_collections, den_collection)
     isempty(new_kin_relation_dict) && continue
@@ -276,32 +289,44 @@ function read_loop_denominators(
       end # if
     end # for (key, value)
   end # for amp_file
+
   return amp_filename_list, den_collections, kin_relation_dict
+
 end # function read_loop_denominators
+
+
+
+#####################################################################
 function read_loop_denominators(
   ::Val{:AmplitudeFile},
   amplitude_file_name::String,
-  read_kinematic_relations::Bool
+  read_kinematic_relations::Bool;
+  denominator_args_cache::Dict{String,NTuple{3,Basic}}=Dict{String,NTuple{3,Basic}}()
 )::Tuple{
   FeynmanDenominatorCollection,
   Dict{Basic, Basic} # kinematic relations
 }
+#####################################################################
+
   amplitude_file = load(amplitude_file_name)
   n_loop = amplitude_file["n_loop"]
-  loop_den_list = map(Basic, amplitude_file["loop_den_list"])
+  loop_den_list = amplitude_file["loop_den_list"]
   loop_momenta = ["q$ii" for ii ∈ 1:n_loop]
   external_momenta = to_Basic( amplitude_file["ext_mom_list"] )
   sort!(external_momenta; by=get_ext_index)
   pop!(external_momenta)
-  external_momenta = subs.(
-    external_momenta,
-    (Ref ∘ Dict{Basic, Basic})(Basic(key) => Basic(value) for (key, value) ∈ amplitude_file["mom_symmetry"])
-  ) # end external_momenta
+  mom_symmetry_map = SymEngine.CMapBasicBasic(
+    Dict{Basic,Basic}(Basic(key) => Basic(value) for (key, value) ∈ amplitude_file["mom_symmetry"])
+  )
+  external_momenta = subs.( external_momenta, Ref(mom_symmetry_map) )
   unique!(external_momenta)
   den_list = Vector{FeynmanDenominator}(undef, length(loop_den_list))
-  for (den_index, loop_den) ∈ enumerate(loop_den_list)
-    @assert get_name(loop_den) == "Den"
-    mom, mass, width = get_args(loop_den)
+  for (den_index, loop_den_str) ∈ enumerate(loop_den_list)
+    mom, mass, width = get!(denominator_args_cache, loop_den_str) do
+      loop_den = Basic(loop_den_str)
+      @assert get_name(loop_den) == "Den"
+      NTuple{3,Basic}(get_args(loop_den))
+    end
     den_list[den_index] = FeynmanDenominator(mom, mass, width)
   end # for
 
@@ -317,8 +342,12 @@ function read_loop_denominators(
   end # for (key, value)
 
   return FeynmanDenominatorCollection(loop_momenta, external_momenta, den_list), kin_relation_dict
+
 end # function read_loop_denominators
 
+
+
+##################################################################
 function minimize_topology_list_directly(
   ::Any,
   den_collection_list::Vector{FeynmanDenominatorCollection}
@@ -326,6 +355,8 @@ function minimize_topology_list_directly(
   Vector{FeynmanDenominatorCollection}, # minimal topologies
   Vector{Vector{Int}} # covering indices
 }
+##################################################################
+
   # initial information #######################################################
   loop_momenta = reduce(union, map(dc -> dc.loop_momenta, den_collection_list))
   loop_momenta = map(Basic, loop_momenta)
@@ -394,9 +425,14 @@ function minimize_topology_list_directly(
   end # for indices
 
   return result_den_collection_list, final_indices_list
+
 end # function minimize_topology_list_directly
 
+
+###################################################################################
 function is_complete_topology(den_collection::FeynmanDenominatorCollection)::Bool
+###################################################################################
+
   loop_momenta = map(Basic, den_collection.loop_momenta)
   n_loop = length(loop_momenta)
   independent_external_momenta = map(Basic, den_collection.external_momenta#=[begin:end-1]=#)
@@ -406,23 +442,34 @@ function is_complete_topology(den_collection::FeynmanDenominatorCollection)::Boo
   return calculate_denominator_collection_rank(
     loop_momenta, independent_external_momenta, den_collection.denominators
   ) == n_sp
+
 end # function is_complete_topology
 
+####################################################
 function calculate_denominator_collection_rank(
   den_collection::FeynmanDenominatorCollection
 )::Int
+####################################################
+
   loop_momenta = map(Basic, den_collection.loop_momenta)
   independent_external_momenta = map(Basic, den_collection.external_momenta#=[begin:end-1]=#)
   den_list = map(Basic, den_collection.denominators)
+
   return calculate_denominator_collection_rank(
     loop_momenta, independent_external_momenta, den_list
   )
+
 end # function calculate_denominator_collection_rank
+
+
+#####################################################
 function calculate_denominator_collection_rank(
   loop_momenta::Vector{Basic},
   independent_external_momenta::Vector{Basic},
   den_list::Vector{FeynmanDenominator},
 )::Int
+#####################################################
+
   n_loop = length(loop_momenta)
   n_ind_ext = length(independent_external_momenta)
   n_sp = binomial(n_loop, 2) + n_loop * (n_ind_ext + 1)
@@ -455,7 +502,9 @@ function calculate_denominator_collection_rank(
     @assert jj == n_sp + 1
   end # for (ii, expr)
   # @show coeff_mat
+
   return (rank ∘ map)(N, coeff_mat)
+
 end # function calculate_denominator_collection_rank
 
 ###########################################
@@ -464,6 +513,7 @@ function get_greedy_cover(
   original_indices_list::Vector{Vector{Int}}
 )::Vector{Vector{Int}}
 ###########################################
+
   # length(indices_list) == 1 && return indices_list
   universe = reduce(union, original_indices_list; init=Int[])
   universe_copy = copy(universe)
@@ -486,10 +536,14 @@ function get_greedy_cover(
   return new_indices_list
 end # function greedy
 
+
+###############################################################################
 function write_topology(
   topology_dict::Dict{FeynmanDenominatorCollection, Dict{Int, Dict{Basic, Basic}}},
   amp_file_list::Vector{String}, topology_directory::String, kinematic_relations::Dict{Basic, Basic}
 )::Nothing
+###############################################################################
+
   counter = 1
   for (key_collection, covering_dict) ∈ topology_dict
     topology_filename = joinpath(topology_directory, "topology$(counter).jld2")
@@ -523,4 +577,5 @@ function write_topology(
 
     counter += 1
   end # for
+
 end # function write_topology

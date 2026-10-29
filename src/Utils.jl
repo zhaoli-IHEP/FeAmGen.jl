@@ -115,12 +115,13 @@ function gen_shifted_amp( top_file::String; path_type::Symbol=:dir )::Vector{Str
     for (k, v) ∈ mom_shift_dict
       mom_shift[Basic(k)] = Basic(v)
     end # for (k, v)
+    mom_shift_map = SymEngine.CMapBasicBasic(mom_shift)
 
     loop_den_list = map(Basic, amp_info["loop_den_list"])
     amp_lorentz_list = map(Basic, amp_info["amp_lorentz_list"])
 
     for (ii, loop_den) ∈ enumerate(loop_den_list)
-      loop_den_list[ii] = subs( loop_den, mom_shift )
+      loop_den_list[ii] = subs( loop_den, mom_shift_map )
     end # for (ii, loop_den)
     loop_den_list = normalize_loop_mom( loop_den_list )
     @assert (isempty∘setdiff)(loop_den_list, to_Basic(top_info["denominators"])) begin
@@ -131,7 +132,7 @@ function gen_shifted_amp( top_file::String; path_type::Symbol=:dir )::Vector{Str
       """
     end # @assert
     for (ii, amp_lorentz) ∈ enumerate(amp_lorentz_list)
-      amp_lorentz_list[ii] = subs( amp_lorentz, mom_shift )
+      amp_lorentz_list[ii] = subs( amp_lorentz, mom_shift_map )
     end # for (ii, amp_lorent)
 
     amp_info["loop_den_list"] = map(string, loop_den_list)

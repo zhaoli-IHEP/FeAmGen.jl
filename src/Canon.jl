@@ -1,23 +1,28 @@
 ###################################
 # const definition
-const preferred_vac_mom_dict() = Dict{Int,Vector{Vector{Basic}}}(
-  1 => [ [ Basic("q1") ] ],
-  2 => [ to_Basic( ["q1", "q2", "q1 + q2"] ) ],
-  3 => [ to_Basic( ["q1", "q2", "q3", "q1 + q3", "q2 + q3", "q1 + q2 + q3"] ) ],
-  # 3 => [ to_Basic( ["q1", "q2", "q3", "q1 + q3", "q2 + q3", "q1 + q2 + q3"] ),
-  #        to_Basic( ["q1", "q2", "q3", "q1 + q2", "q1 + q3", "q2 + q3"] ) ],
-  4 => [ to_Basic( ["q1", "q2", "q3", "q4",
-                    "q1 + q2", "q1 + q3", "q2 + q4",
-                    "q1 + q2 + q3", "q1 + q2 + q4",
-                    "q1 + q2 + q3 + q4"] ),
-         to_Basic( ["q1", "q2", "q3", "q4",
-                    "q1 + q2", "q1 + q3", "q2 + q4", "q3 + q4",
-                    "q2 + q3 + q4",
-                    "q1 + q2 + q3 + q4"] ),
-         to_Basic( ["q1", "q2", "q3", "q4",
-                    "q1 + q2", "q1 + q3", "q2 + q3", "q2 + q4",
-                    "q1 + q2 + q4", "q2 + q3 + q4"] ) ]
-) # end preferred_vac_mom_dict
+const preferred_vac_mom_dict_ref = Ref{Dict{Int,Vector{Vector{Basic}}}}()
+
+function initialize_preferred_vac_mom_dict!()
+  preferred_vac_mom_dict_ref[] = Dict{Int,Vector{Vector{Basic}}}(
+    1 => [ [ Basic("q1") ] ],
+    2 => [ to_Basic( ["q1", "q2", "q1 + q2"] ) ],
+    3 => [ to_Basic( ["q1", "q2", "q3", "q1 + q3", "q2 + q3", "q1 + q2 + q3"] ) ],
+    4 => [ to_Basic( ["q1", "q2", "q3", "q4",
+                      "q1 + q2", "q1 + q3", "q2 + q4",
+                      "q1 + q2 + q3", "q1 + q2 + q4",
+                      "q1 + q2 + q3 + q4"] ),
+           to_Basic( ["q1", "q2", "q3", "q4",
+                      "q1 + q2", "q1 + q3", "q2 + q4", "q3 + q4",
+                      "q2 + q3 + q4",
+                      "q1 + q2 + q3 + q4"] ),
+           to_Basic( ["q1", "q2", "q3", "q4",
+                      "q1 + q2", "q1 + q3", "q2 + q3", "q2 + q4",
+                      "q1 + q2 + q4", "q2 + q3 + q4"] ) ]
+  )
+  return nothing
+end # function initialize_preferred_vac_mom_dict!
+
+preferred_vac_mom_dict() = preferred_vac_mom_dict_ref[]
 ###################################
 
 
@@ -121,18 +126,21 @@ end # function is_matched_preferred_vac_mom_list
 ###################################
 # This function is used for the case before canonicalization,
 #   so we only check the coefficient sign of the leading qi.
-function normalize_loop_mom_single(
+normalize_loop_mom_single( loop_mom::Basic ) = normalize_expanded_loop_mom_single( expand(loop_mom) )
+
+function normalize_expanded_loop_mom_single(
     loop_mom::Basic
 )::Basic
 ###################################
 
   q_list = get_loop_momenta( [ loop_mom ] )
-  isempty(q_list) && return expand( loop_mom )
-  qi_coeff = SymEngine.coeff( expand(loop_mom), first(q_list), 1 )
+  isempty(q_list) && return loop_mom
+  qi_coeff = SymEngine.coeff( loop_mom, first(q_list), 1 )
+  isone(qi_coeff) && return loop_mom
 
   return expand( loop_mom / qi_coeff )
 
-end # function normalize_loop_mom_single
+end # function normalize_expanded_loop_mom_single
 
 
 ###################################
@@ -208,8 +216,9 @@ function gen_loop_mom_canon_map(
   # !isempty(diff_q_list) && @warn """
   # Add $(join(diff_q_list, ", ")) to the loop momenta list.
   # """
-  q_null_dict = Dict( q_list .=> zero(Basic) )
-  preferred_flag = n_loop ∈ keys(preferred_vac_mom_dict())
+  q_null_map = SymEngine.CMapBasicBasic( Dict( q_list .=> zero(Basic) ) )
+  preferred_mom_dict = preferred_vac_mom_dict()
+  preferred_flag = haskey( preferred_mom_dict, n_loop )
 
   # default repl_rule
   chosen_repl_rule = Dict{Basic,Basic}()
@@ -245,26 +254,28 @@ function gen_loop_mom_canon_map(
 
       # check q signs are all positive or all negative
       vac_repl_rule = Dict( q_list .=> inv_selected_coeff_mat * (q_list .* sign_list) )
-      new_vac_mom_list = map( mom->(expand∘subs)(mom,vac_repl_rule), vac_mom_list )
-      map!( normalize_loop_mom_single, new_vac_mom_list, new_vac_mom_list )
+      vac_repl_map = SymEngine.CMapBasicBasic( vac_repl_rule )
+      new_vac_mom_list = map( mom->(expand∘subs)(mom,vac_repl_map), vac_mom_list )
+      map!( normalize_expanded_loop_mom_single, new_vac_mom_list, new_vac_mom_list )
       new_coeff_mat = coefficient_matrix( new_vac_mom_list, q_list )
       !all( ≥(0), new_coeff_mat ) && continue
 
       # check vacumm momenta is preferred
       preferred_flag &&
         !any( preferred_mom_list->new_vac_mom_list⊆preferred_mom_list,
-                preferred_vac_mom_dict()[n_loop] ) && continue
+                preferred_mom_dict[n_loop] ) && continue
 
       # construct the repl rule
       for selected_mom_indices ∈ Iterators.product( branch_mom_indices_list[selected_branch]... )
-        selected_ext_mom_list = map( mom->subs(mom,q_null_dict), normalized_mom_list[collect(selected_mom_indices)] )
+        selected_ext_mom_list = map( mom->subs(mom,q_null_map), normalized_mom_list[collect(selected_mom_indices)] )
         repl_rule = Dict( q_list .=> map( expand, inv_selected_coeff_mat * (sign_list .* q_list .- selected_ext_mom_list) ) )
-        new_mom_list = map( mom->(expand∘subs)(mom,repl_rule), normalized_mom_list )
+        repl_map = SymEngine.CMapBasicBasic( repl_rule )
+        new_mom_list = map( mom->(expand∘subs)(mom,repl_map), normalized_mom_list )
         # map!( normalize_loop_mom_single, new_mom_list, new_mom_list )
         (!isempty∘setdiff)( (unique∘map)( abs, coefficient_matrix( new_mom_list, k_list )),
                               Basic[0,1] ) && continue
 
-        repl_order = get_sort_order( new_mom_list )
+        repl_order = get_sort_order( new_mom_list; already_expanded=true )
 
         # check order
         if repl_order < chosen_repl_order
@@ -293,11 +304,13 @@ end # function gen_loop_mom_canon_map
 #
 # A simple trial for sorting the replace rules generated in `gen_loop_mom_canon_map`.
 function get_sort_order(
-    mom_list::Vector{Basic}
+    mom_list::Vector{Basic};
+    already_expanded::Bool=false
 )::Vector{BigInt}
 #########################################################
 
-  tmp_mom_list = map( normalize_loop_mom_single, mom_list )
+  normalize_mom = already_expanded ? normalize_expanded_loop_mom_single : normalize_loop_mom_single
+  tmp_mom_list = map( normalize_mom, mom_list )
   unique!( tmp_mom_list )
   # sort!( tmp_mom_list; by=string )
   q_list = get_loop_momenta( tmp_mom_list )
@@ -345,16 +358,18 @@ function canonicalize_amp(
 
   tmp_repl_dict = Dict( original_q_list .=> q_list )
   inv_tmp_repl_dict = Dict( q_list .=> original_q_list )
+  tmp_repl_map = SymEngine.CMapBasicBasic( tmp_repl_dict )
 
-  new_loop_den_list = map( den->subs(den,tmp_repl_dict), loop_den_list )
-  new_amp_lorentz_list = map( amp->subs(amp,tmp_repl_dict), amp_lorentz_list )
+  new_loop_den_list = map( den->subs(den,tmp_repl_map), loop_den_list )
+  new_amp_lorentz_list = map( amp->subs(amp,tmp_repl_map), amp_lorentz_list )
 
   mom_list = map( first∘get_args, new_loop_den_list )
   canon_map = gen_loop_mom_canon_map( mom_list )
+  canon_native_map = SymEngine.CMapBasicBasic( canon_map )
 
-  new_loop_den_list = map( den->subs(den,canon_map), new_loop_den_list )
+  new_loop_den_list = map( den->subs(den,canon_native_map), new_loop_den_list )
   new_loop_den_list = normalize_loop_mom( new_loop_den_list )
-  new_amp_lorentz_list = map( amp->subs(amp,canon_map), new_amp_lorentz_list )
+  new_amp_lorentz_list = map( amp->subs(amp,canon_native_map), new_amp_lorentz_list )
 
   final_canon_map = Dict{Basic,Basic}()
   for (key, value) ∈ canon_map

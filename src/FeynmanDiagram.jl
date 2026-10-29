@@ -1749,24 +1749,23 @@ function generate_amplitude(
 
   couplingfactor = Basic(input["couplingfactor"])
 
-  qgraf_out = (YAML.load_file ∘ joinpath)( dir, "qgraf_out.dat" )
-  (rm ∘ joinpath)( dir, "qgraf_out.dat" )
+  graph_list = let qgraf_out = (YAML.load_file ∘ joinpath)( dir, "qgraf_out.dat" )
+    (rm ∘ joinpath)( dir, "qgraf_out.dat" )
 
-  qgraf_list = qgraf_out["FeynmanDiagrams"]
-  if isnothing( qgraf_list )
-    @warn "QGRAF returns no graph!"
-    write( joinpath( dir, "NoGraph.txt" ), "QGRAF returns no graph!")
-    return nothing
-  end # if
+    qgraf_list = qgraf_out["FeynmanDiagrams"]
+    if isnothing( qgraf_list )
+      @warn "QGRAF returns no graph!"
+      write( joinpath( dir, "NoGraph.txt" ), "QGRAF returns no graph!")
+      return nothing
+    end # if
 
-  #------------------------------------------------
-  # Convert qgraf to Graph
-  graph_list = @pipe qgraf_list |>
-               map( q -> convert_qgraf_TO_Graph( q, model ), _ ) |>
-               filter( !isnothing, _ ) |>
-               convert( Array{Graph,1}, _ ) |>
-               sort( _, by= g->g.property[:diagram_index] )
-  #------------------------------------------------
+    # Convert qgraf to Graph
+    @pipe qgraf_list |>
+          map( q -> convert_qgraf_TO_Graph( q, model ), _ ) |>
+          filter( !isnothing, _ ) |>
+          convert( Array{Graph,1}, _ ) |>
+          sort( _, by= g->g.property[:diagram_index] )
+  end
   graph_list = filter( !is_null_graph, graph_list )
   #------------------------------------------------
 
@@ -1809,6 +1808,7 @@ function generate_amplitude(
   # baseINC_script_str = make_baseINC_script( first(graph_list) )
 
   mom_symmetry = to_Basic_dict( convert( Vector{Vector{String}}, input["momentum_symmetry"] ) )
+  mom_symmetry_map = SymEngine.CMapBasicBasic( mom_symmetry )
   @show mom_symmetry
   color_symmetry = Dict{Int64,Int64}( input["color_symmetry"] )
   @show color_symmetry
@@ -1892,8 +1892,8 @@ function generate_amplitude(
     #-----------------------------------------------------------------
     # Implement the mom_symmetry
     if !isempty(mom_symmetry)
-      lorentz_list_pre = map( x->subs(x,mom_symmetry), lorentz_list_pre )
-      loop_den_list = map( x->subs(x,mom_symmetry), loop_den_list )
+      lorentz_list_pre = map( x->subs(x,mom_symmetry_map), lorentz_list_pre )
+      loop_den_list = map( x->subs(x,mom_symmetry_map), loop_den_list )
       unindep_mom_list = (free_symbols∘collect∘keys)(mom_symmetry)
       for (key,value) in kin_relation
         if (!isempty∘intersect)( unindep_mom_list, free_symbols(key) )
